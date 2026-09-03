@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { FieldError } from "@/components/form-feedback";
+import { MeasurementInfo } from "@/components/measurement-info";
 import { saveMeasurementEntryAction } from "./actions";
 
 type Props = {
@@ -89,9 +90,12 @@ export function MeasurementDialog({ open, onOpenChange, entry }: Props) {
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            {MEASUREMENT_FIELDS.map(({ key, label }) => (
+            {MEASUREMENT_FIELDS.map(({ key, label, howTo }) => (
               <div key={key} className="space-y-1.5">
-                <Label htmlFor={`m-${key}`}>{label} (cm)</Label>
+                <div className="flex items-center gap-1">
+                  <Label htmlFor={`m-${key}`}>{label} (cm)</Label>
+                  <MeasurementInfo label={label} howTo={howTo} />
+                </div>
                 <Input
                   id={`m-${key}`}
                   name={key}

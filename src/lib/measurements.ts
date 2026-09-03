@@ -2,13 +2,48 @@ import type { MeasurementEntry } from "@prisma/client";
 
 /** Circunferências corporais registráveis, em centímetros. */
 export const MEASUREMENT_FIELDS = [
-  { key: "neckCm", label: "Pescoço" },
-  { key: "chestCm", label: "Peito / tórax" },
-  { key: "waistCm", label: "Cintura" },
-  { key: "hipCm", label: "Quadril" },
-  { key: "armCm", label: "Braço" },
-  { key: "thighCm", label: "Coxa" },
-  { key: "calfCm", label: "Panturrilha" },
+  {
+    key: "neckCm",
+    label: "Pescoço",
+    howTo:
+      "Meça na base do pescoço, logo acima da linha dos ombros, com a fita reta e sem apertar.",
+  },
+  {
+    key: "chestCm",
+    label: "Peito / tórax",
+    howTo:
+      "Passe a fita por baixo das axilas, na altura dos mamilos, respirando normalmente.",
+  },
+  {
+    key: "waistCm",
+    label: "Cintura",
+    howTo:
+      "Meça no ponto mais estreito do tronco, em geral na altura do umbigo, ao terminar de expirar sem forçar.",
+  },
+  {
+    key: "hipCm",
+    label: "Quadril",
+    howTo:
+      "Meça na parte mais larga dos glúteos, com os pés juntos e o peso igual nas duas pernas.",
+  },
+  {
+    key: "armCm",
+    label: "Braço",
+    howTo:
+      "Braço relaxado ao lado do corpo. Meça no ponto mais grosso, a meia distância entre ombro e cotovelo.",
+  },
+  {
+    key: "thighCm",
+    label: "Coxa",
+    howTo:
+      "Em pé, meça a coxa relaxada logo abaixo da dobra do glúteo, no ponto mais grosso.",
+  },
+  {
+    key: "calfCm",
+    label: "Panturrilha",
+    howTo:
+      "Em pé, com o peso nos dois pés, meça a panturrilha no ponto mais grosso.",
+  },
 ] as const;
 
 export type MeasurementKey = (typeof MEASUREMENT_FIELDS)[number]["key"];

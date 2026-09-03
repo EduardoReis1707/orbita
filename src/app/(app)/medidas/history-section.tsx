@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ConfirmDeleteButton } from "@/components/confirm-delete-button";
+import { MeasurementInfo } from "@/components/measurement-info";
 import {
   deleteMeasurementEntryAction,
   deleteWeightEntryAction,
@@ -112,9 +113,12 @@ export function HistorySection({ weightEntries, measurementEntries }: Props) {
             <TableHeader>
               <TableRow>
                 <TableHead>Data</TableHead>
-                {MEASUREMENT_FIELDS.map(({ key, label }) => (
-                  <TableHead key={key} className="text-right whitespace-nowrap">
-                    {label}
+                {MEASUREMENT_FIELDS.map(({ key, label, howTo }) => (
+                  <TableHead key={key} className="whitespace-nowrap">
+                    <span className="flex items-center justify-end gap-1">
+                      {label}
+                      <MeasurementInfo label={label} howTo={howTo} />
+                    </span>
                   </TableHead>
                 ))}
                 <TableHead className="text-right">Gordura</TableHead>

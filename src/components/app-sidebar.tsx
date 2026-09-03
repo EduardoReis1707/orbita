@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ActivityIcon } from "lucide-react";
 
 import { isActivePath, mainNav } from "@/lib/nav";
+import { BrandMark } from "@/components/brand-mark";
 import {
   Sidebar,
   SidebarContent,
@@ -27,9 +27,7 @@ export function AppSidebar() {
           href="/painel"
           className="flex items-center gap-2 px-1 py-1.5 group-data-[collapsible=icon]:px-0"
         >
-          <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-            <ActivityIcon className="size-4" />
-          </span>
+          <BrandMark />
           <span className="font-heading text-sm font-semibold group-data-[collapsible=icon]:hidden">
             Auxiliar de Treino
           </span>

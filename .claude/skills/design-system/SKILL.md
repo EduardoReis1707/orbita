@@ -43,7 +43,7 @@ Sempre use os tokens semânticos via classes Tailwind (`bg-primary`,
 | `background` / `foreground` | fundo e texto padrão |
 | `card` / `card-foreground` | superfícies elevadas |
 | `muted` / `muted-foreground` | fundos sutis, texto secundário |
-| `primary` | ação principal (neutro escuro / claro no dark) |
+| `primary` | ação principal — roxo `#69078C` (claro) / orquídea `#D064F7` (escuro) |
 | `secondary`, `accent` | apoio |
 | `border`, `input`, `ring` | traços e foco |
 | `destructive` | erros e ações destrutivas — **só** para isso |
@@ -51,10 +51,32 @@ Sempre use os tokens semânticos via classes Tailwind (`bg-primary`,
 | `warning` | avisos e ações que pedem atenção (laranja) |
 | `chart-1..5` | séries de gráfico (verde, azul, âmbar, violeta, cinza-azulado) |
 
-Direção visual: bastante espaço em branco, bordas discretas, cantos levemente
-arredondados (`--radius: 0.625rem`), poucas cores de destaque, **sem excesso de
-gradientes**. Evitar a aparência genérica de "kit de cards SaaS": nem toda
-seção precisa ser um card com a mesma sombra.
+### Marca e gradiente
+
+Paleta roxa sobre base branca moderna:
+
+| Hex | Papel |
+| --- | --- |
+| `#69078C` | roxo primário (tema claro) |
+| `#330444` | roxo profundo — fundos escuros e texto |
+| `#D064F7` | orquídea — destaque, brilho e `primary` no tema escuro |
+
+- Gradiente da marca: variável `--gradient-brand` (roxo → orquídea, 135°).
+  Use as utilidades **`bg-brand-gradient`** (fundo) e **`text-brand-gradient`**
+  (texto com recorte). Definidas em `globals.css` via `@utility`.
+- A marca do produto é o componente **`BrandMark`**
+  (`src/components/brand-mark.tsx`) — quadrado com o gradiente e o ícone.
+  Não recriar o quadradinho à mão.
+- `Button` variante `default` já usa `bg-brand-gradient` + brilho/elevação no
+  hover (`motion-safe`). Para link com cara de botão primário, continue usando
+  `buttonVariants({ size })` — herda o gradiente.
+
+Direção visual: base branca (quase pura), bastante espaço em branco, bordas
+discretas, cantos levemente arredondados (`--radius: 0.625rem`), roxo como
+única família de destaque. Gradiente só em pontos-âncora (marca, CTA
+principal, brilho atrás do hero) — não como decoração espalhada. Evitar a
+aparência genérica de "kit de cards SaaS": nem toda seção precisa ser um card
+com a mesma sombra.
 
 ## Tipografia
 

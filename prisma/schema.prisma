@@ -95,6 +95,7 @@ model Profile {
   workouts           Workout[]
   meals              Meal[]
   goals              Goal[]
+  documents          FileDocument[]
 
   @@map("profiles")
 }
@@ -245,4 +246,33 @@ model Goal {
 
   @@index([profileId, status])
   @@map("goals")
+}
+
+/// Categoria de um documento anexado.
+enum DocumentCategory {
+  WORKOUT_PLAN // ficha de treino
+  DIET_PLAN // plano alimentar
+  ASSESSMENT // avaliação física
+  EXAM // exame
+  REPORT // relatório
+  OTHER
+}
+
+/// Metadados de um arquivo (PDF) guardado no Supabase Storage. O binário
+/// fica no bucket `documentos`; aqui só a referência.
+model FileDocument {
+  id          Int              @id @default(autoincrement())
+  profileId   String           @map("profile_id") @db.Uuid
+  name        String
+  category    DocumentCategory  @default(OTHER)
+  description String?
+  storagePath String           @map("storage_path")
+  sizeBytes   Int              @map("size_bytes")
+  mimeType    String?          @map("mime_type")
+  createdAt   DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@index([profileId, category])
+  @@map("file_documents")
 }

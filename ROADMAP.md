@@ -81,9 +81,13 @@ Cada milestone é um incremento testável e termina com um commit.
     tempo dos últimos registros.
   - Atalhos rápidos para registrar peso, treino, refeição e meta.
   - `src/lib/goal-live-value.ts` compartilhado entre `/painel` e `/metas`.
-- **M7 — Arquivos**
-  - Upload, listagem, download e exclusão de PDFs no Supabase Storage.
-  - Nome, categoria, data e descrição; busca e filtros.
+- **M7 — Arquivos** ✅
+  - Upload, listagem, download e exclusão de PDFs no Supabase Storage
+    (bucket privado `documentos`, acesso só pelo servidor).
+  - Nome, categoria (ficha, dieta, avaliação, exame, relatório, outro),
+    descrição e tamanho; filtro por categoria.
+  - Metadados em `file_documents` (com RLS); binário no Storage.
+  - Requer `SUPABASE_SECRET_KEY` no `.env.local`.
 - **M8 — Ajustes finais**
   - Configurações (perfil, unidades, preferências, notificações, segurança).
   - Busca global e filtros.

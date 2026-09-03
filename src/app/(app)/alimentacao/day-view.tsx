@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { PencilIcon, PlusIcon, SparklesIcon } from "lucide-react";
+import { CameraIcon, PencilIcon, PlusIcon, SparklesIcon } from "lucide-react";
 import type { FoodItem, Meal } from "@prisma/client";
 
 import { formatNumber } from "@/lib/metrics";
@@ -17,6 +17,7 @@ import { deleteFoodItemAction, deleteMealAction } from "./actions";
 import { FoodItemDialog } from "./food-item-dialog";
 import { ImportMealsDialog } from "./import-dialog";
 import { MealDialog } from "./meal-dialog";
+import { MealPhotoDialog } from "./photo-dialog";
 
 export type MealWithItems = Meal & { items: FoodItem[] };
 
@@ -31,6 +32,7 @@ export function DayView({
 }) {
   const [creatingMeal, setCreatingMeal] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [photo, setPhoto] = useState(false);
   const [editingMeal, setEditingMeal] = useState<Meal | null>(null);
   const [addingItemMealId, setAddingItemMealId] = useState<number | null>(null);
   const [editingItem, setEditingItem] = useState<FoodItem | null>(null);
@@ -46,14 +48,24 @@ export function DayView({
     <div className="space-y-3">
       <div className="flex flex-wrap justify-end gap-2">
         {aiEnabled ? (
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => setImporting(true)}
-          >
-            <SparklesIcon />
-            Importar PDF
-          </Button>
+          <>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setPhoto(true)}
+            >
+              <CameraIcon />
+              Estimar por foto
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setImporting(true)}
+            >
+              <SparklesIcon />
+              Importar PDF
+            </Button>
+          </>
         ) : null}
         <Button size="sm" onClick={() => setCreatingMeal(true)}>
           <PlusIcon />
@@ -181,7 +193,10 @@ export function DayView({
       )}
 
       {aiEnabled ? (
-        <ImportMealsDialog open={importing} onOpenChange={setImporting} />
+        <>
+          <ImportMealsDialog open={importing} onOpenChange={setImporting} />
+          <MealPhotoDialog open={photo} onOpenChange={setPhoto} />
+        </>
       ) : null}
       <MealDialog
         date={date}

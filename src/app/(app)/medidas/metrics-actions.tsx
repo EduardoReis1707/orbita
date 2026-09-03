@@ -8,7 +8,7 @@ import { WeightDialog } from "./weight-dialog";
 import { MeasurementDialog } from "./measurement-dialog";
 import { ImportMeasurementsDialog } from "./import-dialog";
 
-export function MetricsActions() {
+export function MetricsActions({ aiEnabled }: { aiEnabled: boolean }) {
   const [weightOpen, setWeightOpen] = useState(false);
   const [measurementOpen, setMeasurementOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
@@ -28,14 +28,16 @@ export function MetricsActions() {
           <RulerIcon />
           Registrar medidas
         </Button>
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => setImportOpen(true)}
-        >
-          <SparklesIcon />
-          Importar PDF
-        </Button>
+        {aiEnabled ? (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setImportOpen(true)}
+          >
+            <SparklesIcon />
+            Importar PDF
+          </Button>
+        ) : null}
       </div>
 
       <WeightDialog open={weightOpen} onOpenChange={setWeightOpen} />
@@ -43,7 +45,12 @@ export function MetricsActions() {
         open={measurementOpen}
         onOpenChange={setMeasurementOpen}
       />
-      <ImportMeasurementsDialog open={importOpen} onOpenChange={setImportOpen} />
+      {aiEnabled ? (
+        <ImportMeasurementsDialog
+          open={importOpen}
+          onOpenChange={setImportOpen}
+        />
+      ) : null}
     </>
   );
 }

@@ -32,7 +32,13 @@ const toneClass: Record<"success" | "warning" | "muted", string> = {
   muted: "bg-muted text-muted-foreground",
 };
 
-export function WorkoutsPanel({ workouts }: { workouts: WorkoutCardData[] }) {
+export function WorkoutsPanel({
+  workouts,
+  aiEnabled,
+}: {
+  workouts: WorkoutCardData[];
+  aiEnabled: boolean;
+}) {
   const [creating, setCreating] = useState(false);
   const [importing, setImporting] = useState(false);
   const [editing, setEditing] = useState<Workout | null>(null);
@@ -40,14 +46,16 @@ export function WorkoutsPanel({ workouts }: { workouts: WorkoutCardData[] }) {
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap justify-end gap-2">
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => setImporting(true)}
-        >
-          <SparklesIcon />
-          Importar PDF
-        </Button>
+        {aiEnabled ? (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setImporting(true)}
+          >
+            <SparklesIcon />
+            Importar PDF
+          </Button>
+        ) : null}
         <Button size="sm" onClick={() => setCreating(true)}>
           <PlusIcon />
           Novo treino
@@ -135,7 +143,9 @@ export function WorkoutsPanel({ workouts }: { workouts: WorkoutCardData[] }) {
         </ul>
       )}
 
-      <ImportWorkoutsDialog open={importing} onOpenChange={setImporting} />
+      {aiEnabled ? (
+        <ImportWorkoutsDialog open={importing} onOpenChange={setImporting} />
+      ) : null}
       <WorkoutDialog open={creating} onOpenChange={setCreating} />
       <WorkoutDialog
         open={editing !== null}

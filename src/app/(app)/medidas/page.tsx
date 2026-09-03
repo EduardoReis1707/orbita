@@ -22,6 +22,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { StatCard } from "@/components/metrics/stat-card";
 import { HistorySection } from "./history-section";
+import { isAiConfigured } from "@/lib/ai/client";
 import { MetricsActions } from "./metrics-actions";
 
 export const metadata = { title: "Medidas" };
@@ -105,7 +106,7 @@ export default async function MedidasPage() {
           Registre o seu peso e as suas medidas para acompanhar a evolução e ver
           as estimativas de IMC, metabolismo e gasto calórico.
         </p>
-        <MetricsActions />
+        <MetricsActions aiEnabled={isAiConfigured()} />
       </div>
 
       <section className="grid grid-cols-2 gap-3 lg:grid-cols-3">

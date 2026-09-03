@@ -23,9 +23,11 @@ export type MealWithItems = Meal & { items: FoodItem[] };
 export function DayView({
   date,
   meals,
+  aiEnabled,
 }: {
   date: string;
   meals: MealWithItems[];
+  aiEnabled: boolean;
 }) {
   const [creatingMeal, setCreatingMeal] = useState(false);
   const [importing, setImporting] = useState(false);
@@ -43,14 +45,16 @@ export function DayView({
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap justify-end gap-2">
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => setImporting(true)}
-        >
-          <SparklesIcon />
-          Importar PDF
-        </Button>
+        {aiEnabled ? (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setImporting(true)}
+          >
+            <SparklesIcon />
+            Importar PDF
+          </Button>
+        ) : null}
         <Button size="sm" onClick={() => setCreatingMeal(true)}>
           <PlusIcon />
           Adicionar refeição
@@ -176,7 +180,9 @@ export function DayView({
         })
       )}
 
-      <ImportMealsDialog open={importing} onOpenChange={setImporting} />
+      {aiEnabled ? (
+        <ImportMealsDialog open={importing} onOpenChange={setImporting} />
+      ) : null}
       <MealDialog
         date={date}
         open={creatingMeal}

@@ -16,6 +16,7 @@ import {
   totalDailyEnergyExpenditure,
 } from "@/lib/metrics";
 import { sumFoodItems, suggestTargets } from "@/lib/nutrition";
+import { isAiConfigured } from "@/lib/ai/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { MacroSummary } from "@/components/nutrition/macro-summary";
 import { DayNav } from "./day-nav";
@@ -136,7 +137,11 @@ export default async function AlimentacaoPage({
 
       <section className="space-y-3">
         <h2 className="font-heading text-sm font-semibold">Refeições</h2>
-        <DayView date={date} meals={dayMeals} />
+        <DayView
+          date={date}
+          meals={dayMeals}
+          aiEnabled={isAiConfigured()}
+        />
       </section>
 
       {recentDays.length > 0 ? (

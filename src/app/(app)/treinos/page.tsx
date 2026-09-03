@@ -1,5 +1,6 @@
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { isAiConfigured } from "@/lib/ai/client";
 import { formatDateBR, formatDateShort, toISODate } from "@/lib/date";
 import { formatNumber } from "@/lib/metrics";
 import { totalVolume } from "@/lib/workouts";
@@ -131,7 +132,10 @@ export default async function TreinosPage() {
           <TabsTrigger value="exercicio">Por exercício</TabsTrigger>
         </TabsList>
         <TabsContent value="treinos" className="mt-3">
-          <WorkoutsPanel workouts={workoutCards} />
+          <WorkoutsPanel
+            workouts={workoutCards}
+            aiEnabled={isAiConfigured()}
+          />
         </TabsContent>
         <TabsContent value="exercicio" className="mt-3">
           <ExerciseProgression

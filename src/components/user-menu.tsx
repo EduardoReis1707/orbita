@@ -11,7 +11,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -46,12 +45,10 @@ export function UserMenu({ name, email }: { name: string; email: string }) {
         </Avatar>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">
-        <DropdownMenuLabel className="font-normal">
-          <span className="block text-sm font-medium">{name || "Você"}</span>
-          <span className="block truncate text-xs text-muted-foreground">
-            {email}
-          </span>
-        </DropdownMenuLabel>
+        <div className="px-2 py-1.5">
+          <p className="text-sm font-medium">{name || "Você"}</p>
+          <p className="truncate text-xs text-muted-foreground">{email}</p>
+        </div>
         <DropdownMenuSeparator />
         <DropdownMenuItem render={<Link href="/configuracoes" />}>
           <SettingsIcon />

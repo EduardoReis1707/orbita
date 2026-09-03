@@ -188,12 +188,13 @@ export default async function DicasPage() {
 
       <div className="space-y-3">
         {tips.map((tip) => {
-          const style = toneStyles[tip.tone];
+          const tone = toneStyles[tip.tone];
+          const ToneIcon = tone.icon;
           return (
-            <Card key={tip.id} className={cn("py-0", style.border)}>
+            <Card key={tip.id} className={cn("py-0", tone.border)}>
               <CardContent className="flex gap-3 p-4">
-                <style.icon
-                  className={cn("mt-0.5 size-4 shrink-0", style.iconClass)}
+                <ToneIcon
+                  className={cn("mt-0.5 size-4 shrink-0", tone.iconClass)}
                 />
                 <div className="min-w-0 flex-1">
                   <p className="font-medium">{tip.title}</p>

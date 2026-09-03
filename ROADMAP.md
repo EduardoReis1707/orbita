@@ -44,11 +44,14 @@ Cada milestone é um incremento testável e termina com um commit.
   - Proteção de rotas (`proxy.ts`) e sessão no App Router.
   - Onboarding: dados básicos, objetivo e nível de atividade.
   - RLS habilitado na tabela `profiles` como defesa adicional.
-- **M2 — Métricas corporais**
-  - Registro de peso e medidas com histórico e edição.
-  - Cálculos: IMC, TMB, GET/TDEE, variação percentual, diferença para a meta.
-  - Gráficos de evolução com seletor de período (7d, 30d, 3m, 6m, 1a,
-    personalizado).
+- **M2 — Métricas corporais** ✅
+  - Registro de peso e medidas com histórico, edição e exclusão.
+  - Cálculos: IMC (+ faixa), TMB (Mifflin-St Jeor), GET/TDEE, variação de
+    peso e progresso rumo ao peso-meta.
+  - Página `/medidas` com cards de resumo e histórico em abas.
+  - Página `/evolucao` com gráficos (peso, IMC, medidas) e seletor de
+    período (7d, 30d, 3m, 6m, 1a, tudo).
+  - Tabelas `weight_entries` e `measurement_entries` com RLS.
 - **M3 — Treinos**
   - CRUD de treinos (grupo muscular, data, duração, status, observações).
   - CRUD de exercícios (séries, repetições, carga, descanso).

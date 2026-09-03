@@ -39,17 +39,62 @@ enum GoalType {
 /// Perfil do usuário. O `id` é igual ao id do usuário no Supabase Auth
 /// (auth.users.id). Cada conta tem no máximo um perfil.
 model Profile {
-  id            String         @id @db.Uuid
-  fullName      String         @map("full_name")
-  birthDate     DateTime?      @map("birth_date") @db.Date
-  sex           Sex?
-  heightCm      Int?           @map("height_cm")
-  activityLevel ActivityLevel? @map("activity_level")
-  goalType      GoalType?      @map("goal_type")
-  targetWeightKg Float?        @map("target_weight_kg")
-  onboardedAt   DateTime?      @map("onboarded_at")
-  createdAt     DateTime       @default(now()) @map("created_at")
-  updatedAt     DateTime       @updatedAt @map("updated_at")
+  id             String         @id @db.Uuid
+  fullName       String         @map("full_name")
+  birthDate      DateTime?      @map("birth_date") @db.Date
+  sex            Sex?
+  heightCm       Int?           @map("height_cm")
+  activityLevel  ActivityLevel? @map("activity_level")
+  goalType       GoalType?      @map("goal_type")
+  targetWeightKg Float?         @map("target_weight_kg")
+  onboardedAt    DateTime?      @map("onboarded_at") @db.Timestamptz(6)
+  createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  weightEntries      WeightEntry[]
+  measurementEntries MeasurementEntry[]
 
   @@map("profiles")
+}
+
+/// Registro de peso corporal. No máximo um por dia (por perfil).
+model WeightEntry {
+  id        Int      @id @default(autoincrement())
+  profileId String   @map("profile_id") @db.Uuid
+  date      DateTime @db.Date
+  weightKg  Float    @map("weight_kg")
+  note      String?
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@unique([profileId, date])
+  @@index([profileId, date])
+  @@map("weight_entries")
+}
+
+/// Registro de medidas corporais (circunferências e % de gordura). No máximo
+/// um por dia (por perfil). Todos os campos de medida são opcionais.
+model MeasurementEntry {
+  id         Int      @id @default(autoincrement())
+  profileId  String   @map("profile_id") @db.Uuid
+  date       DateTime @db.Date
+  neckCm     Float?   @map("neck_cm")
+  chestCm    Float?   @map("chest_cm")
+  waistCm    Float?   @map("waist_cm")
+  hipCm      Float?   @map("hip_cm")
+  armCm      Float?   @map("arm_cm")
+  thighCm    Float?   @map("thigh_cm")
+  calfCm     Float?   @map("calf_cm")
+  bodyFatPct Float?   @map("body_fat_pct")
+  note       String?
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@unique([profileId, date])
+  @@index([profileId, date])
+  @@map("measurement_entries")
 }

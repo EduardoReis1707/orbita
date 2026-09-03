@@ -17,8 +17,8 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ConfirmDeleteButton } from "@/components/confirm-delete-button";
-import { ExportMenu } from "@/components/export-menu";
 import { deleteWorkoutAction } from "./actions";
+import { ExportWorkoutsButton } from "./export-dialog";
 import { ImportWorkoutsDialog } from "./import-dialog";
 import { WorkoutDialog } from "./workout-dialog";
 
@@ -47,9 +47,13 @@ export function WorkoutsPanel({
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap justify-end gap-2">
-        {workouts.length > 0 ? (
-          <ExportMenu base="/api/exportar/treinos" />
-        ) : null}
+        <ExportWorkoutsButton
+          workouts={workouts.map((workout) => ({
+            id: workout.id,
+            name: workout.name,
+            date: workout.date,
+          }))}
+        />
         {aiEnabled ? (
           <Button
             size="sm"

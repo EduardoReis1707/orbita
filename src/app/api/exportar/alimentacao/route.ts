@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 
 import { getProfile, requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { toISODate, todayISO } from "@/lib/date";
+import { parseISODate, toISODate, todayISO } from "@/lib/date";
 import { downloadHeaders, toCsv } from "@/lib/export";
 import { renderNutritionPdf } from "@/lib/pdf/nutrition-pdf";
 import { MEAL_TYPE_LABELS } from "@/lib/nutrition";
@@ -11,12 +11,20 @@ export const maxDuration = 30;
 
 export async function GET(request: NextRequest) {
   const user = await requireUser();
-  const requested = request.nextUrl.searchParams.get("formato");
+  const params = request.nextUrl.searchParams;
+  const requested = params.get("formato");
   const format =
     requested === "csv" || requested === "pdf" ? requested : "json";
 
+  const from = params.get("de") ? parseISODate(params.get("de")!) : null;
+  const to = params.get("ate") ? parseISODate(params.get("ate")!) : null;
+  const dateFilter =
+    from || to
+      ? { date: { ...(from ? { gte: from } : {}), ...(to ? { lte: to } : {}) } }
+      : {};
+
   const meals = await prisma.meal.findMany({
-    where: { profileId: user.id },
+    where: { profileId: user.id, ...dateFilter },
     orderBy: [{ date: "asc" }, { time: "asc" }],
     include: { items: { orderBy: { position: "asc" } } },
   });

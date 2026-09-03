@@ -11,12 +11,24 @@ export const maxDuration = 30;
 
 export async function GET(request: NextRequest) {
   const user = await requireUser();
-  const requested = request.nextUrl.searchParams.get("formato");
+  const params = request.nextUrl.searchParams;
+  const requested = params.get("formato");
   const format =
     requested === "csv" || requested === "pdf" ? requested : "json";
 
+  const idsParam = params.get("ids");
+  const ids = idsParam
+    ? idsParam
+        .split(",")
+        .map((value) => Number(value))
+        .filter((value) => Number.isInteger(value))
+    : null;
+
   const workouts = await prisma.workout.findMany({
-    where: { profileId: user.id },
+    where: {
+      profileId: user.id,
+      ...(ids && ids.length > 0 ? { id: { in: ids } } : {}),
+    },
     orderBy: { date: "asc" },
     include: { exercises: { orderBy: { position: "asc" } } },
   });

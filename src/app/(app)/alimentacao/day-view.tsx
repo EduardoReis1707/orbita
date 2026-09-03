@@ -13,8 +13,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { ConfirmDeleteButton } from "@/components/confirm-delete-button";
-import { ExportMenu } from "@/components/export-menu";
 import { deleteFoodItemAction, deleteMealAction } from "./actions";
+import { ExportMealsButton } from "./export-dialog";
 import { FoodItemDialog } from "./food-item-dialog";
 import { ImportMealsDialog } from "./import-dialog";
 import { MealDialog } from "./meal-dialog";
@@ -48,7 +48,7 @@ export function DayView({
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap justify-end gap-2">
-        <ExportMenu base="/api/exportar/alimentacao" />
+        <ExportMealsButton defaultDate={date} />
         {aiEnabled ? (
           <>
             <Button

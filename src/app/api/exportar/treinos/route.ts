@@ -1,16 +1,19 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-import { requireUser } from "@/lib/auth";
+import { getProfile, requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { toISODate, todayISO } from "@/lib/date";
 import { downloadHeaders, toCsv } from "@/lib/export";
+import { renderWorkoutsPdf } from "@/lib/pdf/workouts-pdf";
 import { WORKOUT_STATUS_LABELS } from "@/lib/workouts";
+
+export const maxDuration = 30;
 
 export async function GET(request: NextRequest) {
   const user = await requireUser();
-  const format = request.nextUrl.searchParams.get("formato") === "csv"
-    ? "csv"
-    : "json";
+  const requested = request.nextUrl.searchParams.get("formato");
+  const format =
+    requested === "csv" || requested === "pdf" ? requested : "json";
 
   const workouts = await prisma.workout.findMany({
     where: { profileId: user.id },
@@ -19,6 +22,32 @@ export async function GET(request: NextRequest) {
   });
 
   const stamp = todayISO();
+
+  if (format === "pdf") {
+    const profile = await getProfile();
+    const buffer = await renderWorkoutsPdf(
+      workouts.map((workout) => ({
+        name: workout.name,
+        date: workout.date,
+        status: workout.status,
+        muscleGroups: workout.muscleGroups,
+        durationMin: workout.durationMin,
+        note: workout.note,
+        exercises: workout.exercises.map((exercise) => ({
+          name: exercise.name,
+          sets: exercise.sets,
+          reps: exercise.reps,
+          weightKg: exercise.weightKg,
+          restSec: exercise.restSec,
+          note: exercise.note,
+        })),
+      })),
+      { userName: profile?.fullName ?? "", generatedAt: new Date() },
+    );
+    return new NextResponse(new Uint8Array(buffer), {
+      headers: downloadHeaders(`treinos-${stamp}.pdf`, "application/pdf"),
+    });
+  }
 
   if (format === "csv") {
     const rows = workouts.flatMap((workout) =>

@@ -12,6 +12,7 @@
     "@anthropic-ai/sdk": "^0.123.0",
     "@base-ui/react": "^1.7.0",
     "@prisma/client": "^6.19.3",
+    "@react-pdf/renderer": "^4.9.0",
     "@supabase/ssr": "^0.12.5",
     "@supabase/supabase-js": "^2.114.0",
     "class-variance-authority": "^0.7.1",

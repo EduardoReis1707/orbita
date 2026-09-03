@@ -1,16 +1,19 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-import { requireUser } from "@/lib/auth";
+import { getProfile, requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { toISODate, todayISO } from "@/lib/date";
 import { downloadHeaders, toCsv } from "@/lib/export";
+import { renderNutritionPdf } from "@/lib/pdf/nutrition-pdf";
 import { MEAL_TYPE_LABELS } from "@/lib/nutrition";
+
+export const maxDuration = 30;
 
 export async function GET(request: NextRequest) {
   const user = await requireUser();
-  const format = request.nextUrl.searchParams.get("formato") === "csv"
-    ? "csv"
-    : "json";
+  const requested = request.nextUrl.searchParams.get("formato");
+  const format =
+    requested === "csv" || requested === "pdf" ? requested : "json";
 
   const meals = await prisma.meal.findMany({
     where: { profileId: user.id },
@@ -19,6 +22,29 @@ export async function GET(request: NextRequest) {
   });
 
   const stamp = todayISO();
+
+  if (format === "pdf") {
+    const profile = await getProfile();
+    const buffer = await renderNutritionPdf(
+      meals.map((meal) => ({
+        isoDate: toISODate(meal.date),
+        type: meal.type,
+        time: meal.time,
+        items: meal.items.map((item) => ({
+          name: item.name,
+          quantity: item.quantity,
+          calories: item.calories,
+          proteinG: item.proteinG,
+          carbsG: item.carbsG,
+          fatG: item.fatG,
+        })),
+      })),
+      { userName: profile?.fullName ?? "", generatedAt: new Date() },
+    );
+    return new NextResponse(new Uint8Array(buffer), {
+      headers: downloadHeaders(`alimentacao-${stamp}.pdf`, "application/pdf"),
+    });
+  }
 
   if (format === "csv") {
     const rows = meals.flatMap((meal) =>

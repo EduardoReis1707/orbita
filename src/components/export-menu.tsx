@@ -1,6 +1,11 @@
 "use client";
 
-import { DownloadIcon, FileJsonIcon, FileSpreadsheetIcon } from "lucide-react";
+import {
+  DownloadIcon,
+  FileJsonIcon,
+  FileSpreadsheetIcon,
+  FileTextIcon,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -21,13 +26,17 @@ export function ExportMenu({ base }: { base: string }) {
         Exportar
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem render={<a href={`${base}?formato=json`} download />}>
-          <FileJsonIcon />
-          Baixar JSON (backup)
+        <DropdownMenuItem render={<a href={`${base}?formato=pdf`} download />}>
+          <FileTextIcon />
+          Baixar PDF
         </DropdownMenuItem>
         <DropdownMenuItem render={<a href={`${base}?formato=csv`} download />}>
           <FileSpreadsheetIcon />
           Baixar CSV (planilha)
+        </DropdownMenuItem>
+        <DropdownMenuItem render={<a href={`${base}?formato=json`} download />}>
+          <FileJsonIcon />
+          Baixar JSON (backup)
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

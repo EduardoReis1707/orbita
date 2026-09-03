@@ -2,7 +2,12 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ChevronRightIcon, PencilIcon, PlusIcon } from "lucide-react";
+import {
+  ChevronRightIcon,
+  PencilIcon,
+  PlusIcon,
+  SparklesIcon,
+} from "lucide-react";
 import type { Workout } from "@prisma/client";
 
 import { formatDateBR } from "@/lib/date";
@@ -13,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ConfirmDeleteButton } from "@/components/confirm-delete-button";
 import { deleteWorkoutAction } from "./actions";
+import { ImportWorkoutsDialog } from "./import-dialog";
 import { WorkoutDialog } from "./workout-dialog";
 
 export type WorkoutCardData = Workout & {
@@ -28,11 +34,20 @@ const toneClass: Record<"success" | "warning" | "muted", string> = {
 
 export function WorkoutsPanel({ workouts }: { workouts: WorkoutCardData[] }) {
   const [creating, setCreating] = useState(false);
+  const [importing, setImporting] = useState(false);
   const [editing, setEditing] = useState<Workout | null>(null);
 
   return (
     <div className="space-y-3">
-      <div className="flex justify-end">
+      <div className="flex flex-wrap justify-end gap-2">
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => setImporting(true)}
+        >
+          <SparklesIcon />
+          Importar PDF
+        </Button>
         <Button size="sm" onClick={() => setCreating(true)}>
           <PlusIcon />
           Novo treino
@@ -120,6 +135,7 @@ export function WorkoutsPanel({ workouts }: { workouts: WorkoutCardData[] }) {
         </ul>
       )}
 
+      <ImportWorkoutsDialog open={importing} onOpenChange={setImporting} />
       <WorkoutDialog open={creating} onOpenChange={setCreating} />
       <WorkoutDialog
         open={editing !== null}

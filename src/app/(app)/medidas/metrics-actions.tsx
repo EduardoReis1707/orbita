@@ -1,15 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import { PlusIcon, RulerIcon, ScaleIcon } from "lucide-react";
+import { PlusIcon, RulerIcon, ScaleIcon, SparklesIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { WeightDialog } from "./weight-dialog";
 import { MeasurementDialog } from "./measurement-dialog";
+import { ImportMeasurementsDialog } from "./import-dialog";
 
 export function MetricsActions() {
   const [weightOpen, setWeightOpen] = useState(false);
   const [measurementOpen, setMeasurementOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
 
   return (
     <>
@@ -26,6 +28,14 @@ export function MetricsActions() {
           <RulerIcon />
           Registrar medidas
         </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => setImportOpen(true)}
+        >
+          <SparklesIcon />
+          Importar PDF
+        </Button>
       </div>
 
       <WeightDialog open={weightOpen} onOpenChange={setWeightOpen} />
@@ -33,6 +43,7 @@ export function MetricsActions() {
         open={measurementOpen}
         onOpenChange={setMeasurementOpen}
       />
+      <ImportMeasurementsDialog open={importOpen} onOpenChange={setImportOpen} />
     </>
   );
 }

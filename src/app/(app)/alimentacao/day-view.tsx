@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { PencilIcon, PlusIcon } from "lucide-react";
+import { PencilIcon, PlusIcon, SparklesIcon } from "lucide-react";
 import type { FoodItem, Meal } from "@prisma/client";
 
 import { formatNumber } from "@/lib/metrics";
@@ -15,6 +15,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { ConfirmDeleteButton } from "@/components/confirm-delete-button";
 import { deleteFoodItemAction, deleteMealAction } from "./actions";
 import { FoodItemDialog } from "./food-item-dialog";
+import { ImportMealsDialog } from "./import-dialog";
 import { MealDialog } from "./meal-dialog";
 
 export type MealWithItems = Meal & { items: FoodItem[] };
@@ -27,6 +28,7 @@ export function DayView({
   meals: MealWithItems[];
 }) {
   const [creatingMeal, setCreatingMeal] = useState(false);
+  const [importing, setImporting] = useState(false);
   const [editingMeal, setEditingMeal] = useState<Meal | null>(null);
   const [addingItemMealId, setAddingItemMealId] = useState<number | null>(null);
   const [editingItem, setEditingItem] = useState<FoodItem | null>(null);
@@ -40,7 +42,15 @@ export function DayView({
 
   return (
     <div className="space-y-3">
-      <div className="flex justify-end">
+      <div className="flex flex-wrap justify-end gap-2">
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => setImporting(true)}
+        >
+          <SparklesIcon />
+          Importar PDF
+        </Button>
         <Button size="sm" onClick={() => setCreatingMeal(true)}>
           <PlusIcon />
           Adicionar refeição
@@ -166,6 +176,7 @@ export function DayView({
         })
       )}
 
+      <ImportMealsDialog open={importing} onOpenChange={setImporting} />
       <MealDialog
         date={date}
         open={creatingMeal}

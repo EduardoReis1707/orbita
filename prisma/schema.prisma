@@ -43,6 +43,23 @@ enum WorkoutStatus {
   SKIPPED // estava planejado e não foi feito
 }
 
+/// O que uma meta acompanha. Define de onde vem o valor atual.
+enum GoalMetric {
+  WEIGHT // peso corporal (kg)
+  BODY_FAT // percentual de gordura
+  MEASUREMENT // uma circunferência (cm) — `metricKey` diz qual
+  EXERCISE_LOAD // carga máxima de um exercício (kg) — `metricKey` é o nome
+  WORKOUT_FREQUENCY // treinos realizados por semana
+  CUSTOM // valor atualizado manualmente pelo usuário
+}
+
+/// Situação de uma meta.
+enum GoalStatus {
+  ACTIVE
+  ACHIEVED
+  ABANDONED
+}
+
 /// Momento da refeição.
 enum MealType {
   BREAKFAST // café da manhã
@@ -77,6 +94,7 @@ model Profile {
   measurementEntries MeasurementEntry[]
   workouts           Workout[]
   meals              Meal[]
+  goals              Goal[]
 
   @@map("profiles")
 }
@@ -202,4 +220,29 @@ model FoodItem {
 
   @@index([mealId])
   @@map("food_items")
+}
+
+/// Uma meta pessoal. `startValue`/`targetValue` definem a direção
+/// (target < start = reduzir). Para `CUSTOM`, `currentValue` é atualizado
+/// à mão; nas demais métricas o valor atual é calculado dos registros.
+model Goal {
+  id           Int         @id @default(autoincrement())
+  profileId    String      @map("profile_id") @db.Uuid
+  title        String
+  description  String?
+  metric       GoalMetric
+  metricKey    String?     @map("metric_key")
+  startValue   Float       @map("start_value")
+  targetValue  Float       @map("target_value")
+  currentValue Float?      @map("current_value")
+  deadline     DateTime?   @db.Date
+  status       GoalStatus  @default(ACTIVE)
+  achievedAt   DateTime?   @map("achieved_at") @db.Timestamptz(6)
+  createdAt    DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime    @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@index([profileId, status])
+  @@map("goals")
 }

@@ -65,10 +65,14 @@ Cada milestone é um incremento testável e termina com um commit.
   - Metas de nutrição no perfil, com sugestão a partir do GET e do objetivo.
   - Lista dos últimos dias com total de calorias.
   - Tabelas `meals` e `food_items` com RLS.
-- **M5 — Metas**
-  - CRUD de metas (valor inicial, valor desejado, prazo, tipo).
-  - Cálculo de progresso, percentual concluído e status.
-  - Vínculo com peso, medidas, carga e frequência de treino.
+- **M5 — Metas** ✅
+  - CRUD de metas (tipo, valor inicial, valor desejado, prazo, descrição).
+  - Progresso calculado automaticamente a partir dos registros (peso, %
+    gordura, circunferência, carga de exercício, frequência) ou manual
+    (meta personalizada).
+  - Percentual concluído, faltando, prazo/atraso e status
+    (ativa/concluída/abandonada), com confirmar conclusão e reabrir.
+  - Tabela `goals` com RLS.
 - **M6 — Dashboard**
   - Cards de resumo, gráfico de evolução do peso, progresso das metas,
     próximos treinos e últimos registros.

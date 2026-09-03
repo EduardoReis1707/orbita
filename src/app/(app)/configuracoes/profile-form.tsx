@@ -82,7 +82,11 @@ export function ProfileForm({ profile }: { profile: Profile }) {
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="p-sex">Sexo</Label>
-              <Select name="sex" defaultValue={profile.sex ?? undefined}>
+              <Select
+                name="sex"
+                defaultValue={profile.sex ?? undefined}
+                items={SEX_LABELS}
+              >
                 <SelectTrigger id="p-sex" className="w-full">
                   <SelectValue placeholder="Não informar" />
                 </SelectTrigger>
@@ -128,6 +132,7 @@ export function ProfileForm({ profile }: { profile: Profile }) {
               <Select
                 name="goalType"
                 defaultValue={profile.goalType ?? undefined}
+                items={GOAL_TYPE_LABELS}
               >
                 <SelectTrigger id="p-goal" className="w-full">
                   <SelectValue placeholder="Escolha" />
@@ -147,6 +152,7 @@ export function ProfileForm({ profile }: { profile: Profile }) {
               <Select
                 name="activityLevel"
                 defaultValue={profile.activityLevel ?? undefined}
+                items={ACTIVITY_LEVEL_LABELS}
               >
                 <SelectTrigger id="p-activity" className="w-full">
                   <SelectValue placeholder="Não informar" />

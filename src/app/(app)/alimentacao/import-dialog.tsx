@@ -46,6 +46,7 @@ export function ImportMealsDialog({
             <Select
               value={meal.type}
               onValueChange={(value) => patch({ type: value ?? "OTHER" })}
+              items={MEAL_TYPE_LABELS}
             >
               <SelectTrigger className="h-8 w-full">
                 <SelectValue />

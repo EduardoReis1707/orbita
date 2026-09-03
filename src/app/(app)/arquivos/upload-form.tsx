@@ -91,7 +91,7 @@ export function UploadForm() {
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="doc-category">Categoria</Label>
-              <Select name="category" defaultValue="WORKOUT_PLAN">
+              <Select name="category" defaultValue="WORKOUT_PLAN" items={DOCUMENT_CATEGORY_LABELS}>
                 <SelectTrigger id="doc-category" className="w-full">
                   <SelectValue />
                 </SelectTrigger>

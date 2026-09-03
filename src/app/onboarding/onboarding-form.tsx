@@ -64,7 +64,7 @@ export function OnboardingForm({ defaultName }: { defaultName: string }) {
 
           <div className="space-y-1.5">
             <Label htmlFor="goalType">Objetivo principal</Label>
-            <Select name="goalType" required>
+            <Select name="goalType" required items={GOAL_TYPE_LABELS}>
               <SelectTrigger id="goalType" className="w-full">
                 <SelectValue placeholder="Selecione um objetivo" />
               </SelectTrigger>
@@ -87,7 +87,7 @@ export function OnboardingForm({ defaultName }: { defaultName: string }) {
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="sex">Sexo</Label>
-              <Select name="sex">
+              <Select name="sex" items={SEX_LABELS}>
                 <SelectTrigger id="sex" className="w-full">
                   <SelectValue placeholder="Não informar" />
                 </SelectTrigger>
@@ -135,7 +135,7 @@ export function OnboardingForm({ defaultName }: { defaultName: string }) {
 
           <div className="space-y-1.5">
             <Label htmlFor="activityLevel">Nível de atividade</Label>
-            <Select name="activityLevel">
+            <Select name="activityLevel" items={ACTIVITY_LEVEL_LABELS}>
               <SelectTrigger id="activityLevel" className="w-full">
                 <SelectValue placeholder="Selecione (opcional)" />
               </SelectTrigger>

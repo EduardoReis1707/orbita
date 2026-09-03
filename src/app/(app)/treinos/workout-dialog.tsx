@@ -160,6 +160,7 @@ export function WorkoutDialog({ open, onOpenChange, workout }: Props) {
             <Select
               name="status"
               defaultValue={workout?.status ?? "COMPLETED"}
+              items={WORKOUT_STATUS_LABELS}
             >
               <SelectTrigger id="w-status" className="w-full">
                 <SelectValue />

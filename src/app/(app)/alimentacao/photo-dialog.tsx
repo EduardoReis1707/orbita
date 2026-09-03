@@ -94,6 +94,7 @@ export function MealPhotoDialog({
               <div className="space-y-1">
                 <Label htmlFor="mp-type">Refeição</Label>
                 <Select
+                  items={MEAL_TYPE_LABELS}
                   value={
                     (MEAL_TYPE_ORDER.includes(value.mealType as MealType)
                       ? value.mealType

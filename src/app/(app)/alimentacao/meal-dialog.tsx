@@ -84,7 +84,7 @@ export function MealDialog({ date, open, onOpenChange, meal }: Props) {
 
           <div className="space-y-1.5">
             <Label htmlFor="meal-type">Refeição</Label>
-            <Select name="type" defaultValue={meal?.type ?? "LUNCH"}>
+            <Select name="type" defaultValue={meal?.type ?? "LUNCH"} items={MEAL_TYPE_LABELS}>
               <SelectTrigger id="meal-type" className="w-full">
                 <SelectValue />
               </SelectTrigger>

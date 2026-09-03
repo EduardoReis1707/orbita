@@ -100,6 +100,7 @@ export function GoalDialog({ open, onOpenChange, goal }: Props) {
             <Select
               name="metric"
               value={metric}
+              items={GOAL_METRIC_LABELS}
               onValueChange={(value) =>
                 setMetric((value as GoalMetric) ?? "WEIGHT")
               }
@@ -124,6 +125,9 @@ export function GoalDialog({ open, onOpenChange, goal }: Props) {
               <Select
                 name="metricKey"
                 defaultValue={goal?.metricKey ?? undefined}
+                items={Object.fromEntries(
+                  MEASUREMENT_FIELDS.map((field) => [field.key, field.label]),
+                )}
               >
                 <SelectTrigger id="g-key" className="w-full">
                   <SelectValue placeholder="Escolha" />

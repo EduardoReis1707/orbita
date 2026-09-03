@@ -32,17 +32,18 @@ avançadas.
 
 Cada milestone é um incremento testável e termina com um commit.
 
-- **M0 — Fundação** _(em andamento)_
+- **M0 — Fundação** ✅
   - Scaffold Next.js + Tailwind + shadcn/ui.
   - Tema claro/escuro.
   - Layout da aplicação: sidebar no desktop, navegação inferior no mobile.
   - Páginas placeholder das dez áreas do menu.
   - Landing page.
-- **M1 — Supabase + Autenticação**
-  - Conexão com Supabase e Prisma (modelos `User` e `Profile`).
+- **M1 — Supabase + Autenticação** ✅
+  - Conexão com Supabase e Prisma (modelo `Profile`).
   - Cadastro, login, logout e recuperação de senha.
   - Proteção de rotas (`proxy.ts`) e sessão no App Router.
   - Onboarding: dados básicos, objetivo e nível de atividade.
+  - RLS habilitado na tabela `profiles` como defesa adicional.
 - **M2 — Métricas corporais**
   - Registro de peso e medidas com histórico e edição.
   - Cálculos: IMC, TMB, GET/TDEE, variação percentual, diferença para a meta.

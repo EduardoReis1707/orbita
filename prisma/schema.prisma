@@ -43,6 +43,17 @@ enum WorkoutStatus {
   SKIPPED // estava planejado e não foi feito
 }
 
+/// Momento da refeição.
+enum MealType {
+  BREAKFAST // café da manhã
+  MORNING_SNACK // lanche da manhã
+  LUNCH // almoço
+  AFTERNOON_SNACK // lanche da tarde
+  DINNER // jantar
+  SUPPER // ceia
+  OTHER
+}
+
 /// Perfil do usuário. O `id` é igual ao id do usuário no Supabase Auth
 /// (auth.users.id). Cada conta tem no máximo um perfil.
 model Profile {
@@ -54,6 +65,10 @@ model Profile {
   activityLevel  ActivityLevel? @map("activity_level")
   goalType       GoalType?      @map("goal_type")
   targetWeightKg Float?         @map("target_weight_kg")
+  targetCalories Int?           @map("target_calories")
+  targetProteinG Int?           @map("target_protein_g")
+  targetCarbsG   Int?           @map("target_carbs_g")
+  targetFatG     Int?           @map("target_fat_g")
   onboardedAt    DateTime?      @map("onboarded_at") @db.Timestamptz(6)
   createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt      DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -61,6 +76,7 @@ model Profile {
   weightEntries      WeightEntry[]
   measurementEntries MeasurementEntry[]
   workouts           Workout[]
+  meals              Meal[]
 
   @@map("profiles")
 }
@@ -147,4 +163,43 @@ model Exercise {
   @@index([workoutId])
   @@index([name])
   @@map("exercises")
+}
+
+/// Uma refeição de um dia.
+model Meal {
+  id        Int      @id @default(autoincrement())
+  profileId String   @map("profile_id") @db.Uuid
+  date      DateTime @db.Date
+  type      MealType
+  time      String? // "HH:MM" opcional
+  note      String?
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  profile Profile    @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  items   FoodItem[]
+
+  @@index([profileId, date])
+  @@map("meals")
+}
+
+/// Um alimento dentro de uma refeição. Valores nutricionais são estimativas
+/// informadas pelo usuário.
+model FoodItem {
+  id        Int      @id @default(autoincrement())
+  mealId    Int      @map("meal_id")
+  name      String
+  quantity  String? // texto livre: "150 g", "1 unidade"
+  position  Int      @default(0)
+  calories  Float?
+  proteinG  Float?   @map("protein_g")
+  carbsG    Float?   @map("carbs_g")
+  fatG      Float?   @map("fat_g")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  meal Meal @relation(fields: [mealId], references: [id], onDelete: Cascade)
+
+  @@index([mealId])
+  @@map("food_items")
 }

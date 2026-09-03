@@ -59,9 +59,12 @@ Cada milestone é um incremento testável e termina com um commit.
   - Cards de resumo: treinos no mês, frequência semanal, volume, último treino.
   - Aba "Por exercício": evolução da carga máxima por exercício em gráfico.
   - Tabelas `workouts` e `exercises` com RLS.
-- **M4 — Alimentação**
+- **M4 — Alimentação** ✅
   - CRUD de refeições e alimentos (quantidade, horário, calorias, macros).
-  - Resumo diário e comparação entre consumo estimado e metas.
+  - Navegação por dia, resumo diário com barras de consumo × meta.
+  - Metas de nutrição no perfil, com sugestão a partir do GET e do objetivo.
+  - Lista dos últimos dias com total de calorias.
+  - Tabelas `meals` e `food_items` com RLS.
 - **M5 — Metas**
   - CRUD de metas (valor inicial, valor desejado, prazo, tipo).
   - Cálculo de progresso, percentual concluído e status.

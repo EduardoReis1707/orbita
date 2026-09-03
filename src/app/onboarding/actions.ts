@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 
 import { requireUser } from "@/lib/auth";
-import { initialFormState, type FormState } from "@/lib/forms";
+import type { FormState } from "@/lib/forms";
 import { prisma } from "@/lib/prisma";
 import {
   ACTIVITY_LEVEL_VALUES,
@@ -98,5 +98,3 @@ export async function completeOnboardingAction(
 
   redirect("/painel");
 }
-
-export { initialFormState };

@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { ActivityIcon } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
 
 export default function MarketingLayout({ children }: { children: ReactNode }) {
@@ -20,12 +20,15 @@ export default function MarketingLayout({ children }: { children: ReactNode }) {
           </Link>
           <div className="ml-auto flex items-center gap-1">
             <ThemeToggle />
-            <Button variant="ghost" size="sm" render={<Link href="/entrar" />}>
+            <Link
+              href="/entrar"
+              className={buttonVariants({ variant: "ghost", size: "sm" })}
+            >
               Entrar
-            </Button>
-            <Button size="sm" render={<Link href="/cadastrar" />}>
+            </Link>
+            <Link href="/cadastrar" className={buttonVariants({ size: "sm" })}>
               Criar conta
-            </Button>
+            </Link>
           </div>
         </div>
       </header>

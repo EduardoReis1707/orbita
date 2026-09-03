@@ -9,7 +9,7 @@ import {
   UtensilsIcon,
 } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -73,13 +73,16 @@ export default function LandingPage() {
           com gráficos, metas e relatórios.
         </p>
         <div className="flex flex-wrap items-center justify-center gap-3">
-          <Button size="lg" render={<Link href="/cadastrar" />}>
+          <Link href="/cadastrar" className={buttonVariants({ size: "lg" })}>
             Criar conta
             <ArrowRightIcon />
-          </Button>
-          <Button size="lg" variant="outline" render={<Link href="/entrar" />}>
+          </Link>
+          <Link
+            href="/entrar"
+            className={buttonVariants({ size: "lg", variant: "outline" })}
+          >
             Já tenho conta
-          </Button>
+          </Link>
         </div>
       </section>
 
@@ -107,10 +110,10 @@ export default function LandingPage() {
               Crie a sua conta, defina o seu objetivo e comece a registrar os
               seus treinos, medidas e alimentação.
             </p>
-            <Button render={<Link href="/cadastrar" />}>
+            <Link href="/cadastrar" className={buttonVariants()}>
               Criar conta
               <ArrowRightIcon />
-            </Button>
+            </Link>
           </CardContent>
         </Card>
       </section>

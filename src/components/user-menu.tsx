@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { LogOutIcon, SettingsIcon } from "lucide-react";
 
@@ -52,7 +53,7 @@ export function UserMenu({ name, email }: { name: string; email: string }) {
           </span>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuItem render={<a href="/configuracoes" />}>
+        <DropdownMenuItem render={<Link href="/configuracoes" />}>
           <SettingsIcon />
           Configurações
         </DropdownMenuItem>

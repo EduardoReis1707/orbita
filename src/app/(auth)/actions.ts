@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
-import { initialFormState, type FormState } from "@/lib/forms";
+import type { FormState } from "@/lib/forms";
 import { createClient } from "@/lib/supabase/server";
 
 function siteUrl() {
@@ -189,5 +189,3 @@ export async function updatePasswordAction(
 
   redirect("/painel");
 }
-
-export { initialFormState };

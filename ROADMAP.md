@@ -73,10 +73,14 @@ Cada milestone é um incremento testável e termina com um commit.
   - Percentual concluído, faltando, prazo/atraso e status
     (ativa/concluída/abandonada), com confirmar conclusão e reabrir.
   - Tabela `goals` com RLS.
-- **M6 — Dashboard**
-  - Cards de resumo, gráfico de evolução do peso, progresso das metas,
-    próximos treinos e últimos registros.
-  - Linha do tempo de registros e acontecimentos.
+- **M6 — Dashboard** ✅
+  - Saudação e cards de resumo (peso, IMC, treinos na semana, calorias
+    de hoje).
+  - Gráfico de evolução do peso (90 dias) com linha da meta.
+  - Progresso das metas ativas, próximos treinos planejados e linha do
+    tempo dos últimos registros.
+  - Atalhos rápidos para registrar peso, treino, refeição e meta.
+  - `src/lib/goal-live-value.ts` compartilhado entre `/painel` e `/metas`.
 - **M7 — Arquivos**
   - Upload, listagem, download e exclusão de PDFs no Supabase Storage.
   - Nome, categoria, data e descrição; busca e filtros.

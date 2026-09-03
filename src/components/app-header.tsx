@@ -6,8 +6,9 @@ import { isActivePath, mainNav } from "@/lib/nav";
 import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { UserMenu } from "@/components/user-menu";
 
-export function AppHeader() {
+export function AppHeader({ name, email }: { name: string; email: string }) {
   const pathname = usePathname();
   const current = mainNav.find((item) => isActivePath(pathname, item.href));
 
@@ -20,6 +21,7 @@ export function AppHeader() {
       </h1>
       <div className="ml-auto flex items-center gap-1">
         <ThemeToggle />
+        <UserMenu name={name} email={email} />
       </div>
     </header>
   );

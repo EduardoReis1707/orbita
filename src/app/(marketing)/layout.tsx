@@ -20,8 +20,11 @@ export default function MarketingLayout({ children }: { children: ReactNode }) {
           </Link>
           <div className="ml-auto flex items-center gap-1">
             <ThemeToggle />
-            <Button variant="ghost" size="sm" render={<Link href="/painel" />}>
+            <Button variant="ghost" size="sm" render={<Link href="/entrar" />}>
               Entrar
+            </Button>
+            <Button size="sm" render={<Link href="/cadastrar" />}>
+              Criar conta
             </Button>
           </div>
         </div>

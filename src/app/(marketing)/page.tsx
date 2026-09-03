@@ -73,16 +73,12 @@ export default function LandingPage() {
           com gráficos, metas e relatórios.
         </p>
         <div className="flex flex-wrap items-center justify-center gap-3">
-          <Button size="lg" render={<Link href="/painel" />}>
-            Começar agora
+          <Button size="lg" render={<Link href="/cadastrar" />}>
+            Criar conta
             <ArrowRightIcon />
           </Button>
-          <Button
-            size="lg"
-            variant="outline"
-            render={<Link href="/painel" />}
-          >
-            Ver o painel
+          <Button size="lg" variant="outline" render={<Link href="/entrar" />}>
+            Já tenho conta
           </Button>
         </div>
       </section>
@@ -108,11 +104,11 @@ export default function LandingPage() {
               Comece a registrar hoje
             </h2>
             <p className="max-w-xl text-sm text-muted-foreground">
-              O cadastro e o login chegam na próxima etapa do desenvolvimento.
-              Por enquanto, explore a estrutura do painel.
+              Crie a sua conta, defina o seu objetivo e comece a registrar os
+              seus treinos, medidas e alimentação.
             </p>
-            <Button render={<Link href="/painel" />}>
-              Explorar o painel
+            <Button render={<Link href="/cadastrar" />}>
+              Criar conta
               <ArrowRightIcon />
             </Button>
           </CardContent>

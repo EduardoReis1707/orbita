@@ -23,11 +23,23 @@ export function MobileNav() {
             href={item.href}
             aria-current={active ? "page" : undefined}
             className={cn(
-              "flex flex-1 flex-col items-center gap-1 py-2 text-[11px] font-medium transition-colors",
+              "flex flex-1 flex-col items-center gap-1 py-2 text-[11px] font-medium transition-colors active:scale-95",
               active ? "text-primary" : "text-muted-foreground",
             )}
           >
-            <item.icon className="size-5" />
+            <span
+              className={cn(
+                "flex size-7 items-center justify-center rounded-full transition-all duration-300",
+                active ? "bg-primary/10" : "bg-transparent",
+              )}
+            >
+              <item.icon
+                className={cn(
+                  "size-5 transition-transform duration-300",
+                  active && "scale-110",
+                )}
+              />
+            </span>
             {item.title}
           </Link>
         );

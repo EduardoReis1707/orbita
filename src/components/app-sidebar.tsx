@@ -27,7 +27,7 @@ export function AppSidebar() {
           href="/painel"
           className="flex items-center gap-2 px-1 py-1.5 group-data-[collapsible=icon]:px-0"
         >
-          <BrandMark />
+          <BrandMark className="transition-transform duration-300 hover:rotate-[-8deg] hover:scale-105" />
           <span className="font-heading text-sm font-semibold group-data-[collapsible=icon]:hidden">
             Auxiliar de Treino
           </span>
@@ -38,14 +38,19 @@ export function AppSidebar() {
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
-              {mainNav.map((item) => (
-                <SidebarMenuItem key={item.href}>
+              {mainNav.map((item, index) => (
+                <SidebarMenuItem
+                  key={item.href}
+                  className="motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-left-3 motion-safe:fill-mode-both motion-safe:duration-500"
+                  style={{ animationDelay: `${index * 35}ms` }}
+                >
                   <SidebarMenuButton
                     render={<Link href={item.href} />}
                     isActive={isActivePath(pathname, item.href)}
                     tooltip={item.title}
+                    className="relative transition-[transform,background-color,color] duration-200 before:absolute before:top-1/2 before:left-0.5 before:h-0 before:w-[3px] before:-translate-y-1/2 before:rounded-full before:bg-primary before:transition-[height] before:duration-300 hover:translate-x-0.5 data-active:text-primary data-active:before:h-4 data-active:[&_svg]:text-primary"
                   >
-                    <item.icon />
+                    <item.icon className="transition-transform duration-200 group-hover/menu-button:scale-110" />
                     <span>{item.title}</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>

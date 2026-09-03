@@ -89,14 +89,26 @@ export async function signUpAction(
   });
 
   if (error) {
-    return {
-      status: "error",
-      message:
-        error.code === "user_already_exists" ||
-        error.message.toLowerCase().includes("already registered")
-          ? "Já existe uma conta com esse e-mail."
-          : "Não foi possível criar a conta. Tente novamente.",
-    };
+    if (process.env.NODE_ENV === "development") {
+      console.error("[signUpAction]", error.code, error.message);
+    }
+
+    let message = "Não foi possível criar a conta. Tente novamente.";
+    if (
+      error.code === "user_already_exists" ||
+      error.message.toLowerCase().includes("already registered")
+    ) {
+      message = "Já existe uma conta com esse e-mail.";
+    } else if (error.code === "over_email_send_rate_limit") {
+      message =
+        "Muitas tentativas em pouco tempo. Aguarde alguns minutos e tente de novo.";
+    } else if (error.code === "weak_password") {
+      message = "Escolha uma senha mais forte.";
+    } else if (error.code === "signup_disabled") {
+      message = "O cadastro está desativado no momento.";
+    }
+
+    return { status: "error", message };
   }
 
   if (!data.session) {

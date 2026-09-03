@@ -4,16 +4,9 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* Gradiente da marca (roxo #69078C -> orquídea #D064F7) */
+/* Gradiente da marca (roxo #69078C -> orquídea #D064F7), só para fundos. */
 @utility bg-brand-gradient {
   background-image: var(--gradient-brand);
-}
-
-@utility text-brand-gradient {
-  background-image: var(--gradient-brand);
-  background-clip: text;
-  -webkit-background-clip: text;
-  color: transparent;
 }
 
 @theme inline {

@@ -1,8 +1,11 @@
 "use client";
 
+import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { SearchIcon } from "lucide-react";
 
 import { isActivePath, mainNav } from "@/lib/nav";
+import { buttonVariants } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -20,6 +23,13 @@ export function AppHeader({ name, email }: { name: string; email: string }) {
         {current?.title ?? "Auxiliar de Treino"}
       </h1>
       <div className="ml-auto flex items-center gap-1">
+        <Link
+          href="/busca"
+          aria-label="Buscar"
+          className={buttonVariants({ variant: "ghost", size: "icon" })}
+        >
+          <SearchIcon className="size-4" />
+        </Link>
         <ThemeToggle />
         <UserMenu name={name} email={email} />
       </div>

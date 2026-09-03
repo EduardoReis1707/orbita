@@ -88,9 +88,12 @@ Cada milestone é um incremento testável e termina com um commit.
     descrição e tamanho; filtro por categoria.
   - Metadados em `file_documents` (com RLS); binário no Storage.
   - Requer `SUPABASE_SECRET_KEY` no `.env.local`.
-- **M8 — Ajustes finais**
-  - Configurações (perfil, unidades, preferências, notificações, segurança).
-  - Busca global e filtros.
-  - Sugestões simples baseadas em regras.
-  - PWA básico (manifest + service worker).
-  - Deploy na Vercel.
+- **M8 — Ajustes finais** _(em andamento)_
+  - ✅ Configurações (`/configuracoes`): editar perfil completo, metas de
+    nutrição, tema e trocar senha.
+  - ✅ Busca global (`/busca` + ícone no cabeçalho): treinos, exercícios,
+    alimentos, metas e arquivos.
+  - ✅ Dicas (`/dicas`): observações por regras a partir dos registros.
+  - ✅ PWA básico: `manifest`, ícones gerados, service worker com página
+    offline.
+  - ⬜ Deploy na Vercel (depende de conta + variáveis de ambiente).

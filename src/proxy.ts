@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { updateSession } from "@/lib/supabase/middleware";
 
 /** Rotas acessíveis sem login; usuários logados NÃO são redirecionados delas. */
-const OPEN_PATHS = ["/", "/redefinir-senha"];
+const OPEN_PATHS = ["/", "/redefinir-senha", "/offline"];
 
 /** Rotas de autenticação: sem login liberadas, com login mandam para o painel. */
 const AUTH_PATHS = ["/entrar", "/cadastrar", "/recuperar-senha"];

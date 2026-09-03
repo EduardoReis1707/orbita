@@ -62,8 +62,9 @@ Paleta roxa sobre base branca moderna:
 | `#D064F7` | orquídea — destaque, brilho e `primary` no tema escuro |
 
 - Gradiente da marca: variável `--gradient-brand` (roxo → orquídea, 135°).
-  Use as utilidades **`bg-brand-gradient`** (fundo) e **`text-brand-gradient`**
-  (texto com recorte). Definidas em `globals.css` via `@utility`.
+  Use a utilidade **`bg-brand-gradient`** — só em **fundos** (marca, CTA
+  principal, brilho do hero). Nunca em texto (gradiente em texto é tell de
+  IA e prejudica leitura).
 - A marca do produto é o componente **`BrandMark`**
   (`src/components/brand-mark.tsx`) — quadrado com o gradiente e o ícone.
   Não recriar o quadradinho à mão.

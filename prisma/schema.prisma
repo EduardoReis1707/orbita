@@ -96,6 +96,7 @@ model Profile {
   meals              Meal[]
   goals              Goal[]
   documents          FileDocument[]
+  chatMessages       ChatMessage[]
 
   @@map("profiles")
 }
@@ -248,6 +249,12 @@ model Goal {
   @@map("goals")
 }
 
+/// Autor de uma mensagem do assistente.
+enum ChatRole {
+  USER
+  ASSISTANT
+}
+
 /// Categoria de um documento anexado.
 enum DocumentCategory {
   WORKOUT_PLAN // ficha de treino
@@ -275,4 +282,18 @@ model FileDocument {
 
   @@index([profileId, category])
   @@map("file_documents")
+}
+
+/// Uma mensagem da conversa com o assistente de IA.
+model ChatMessage {
+  id        Int      @id @default(autoincrement())
+  profileId String   @map("profile_id") @db.Uuid
+  role      ChatRole
+  content   String
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@index([profileId, createdAt])
+  @@map("chat_messages")
 }

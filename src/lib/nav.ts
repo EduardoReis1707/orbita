@@ -8,6 +8,7 @@ import {
   LightbulbIcon,
   RulerIcon,
   SettingsIcon,
+  SparklesIcon,
   TargetIcon,
   TrendingUpIcon,
 } from "lucide-react";
@@ -31,6 +32,7 @@ export const mainNav: NavItem[] = [
   { title: "Arquivos", href: "/arquivos", icon: FolderIcon, milestone: "M7" },
   { title: "Relatórios", href: "/relatorios", icon: FileTextIcon, milestone: "M8" },
   { title: "Dicas", href: "/dicas", icon: LightbulbIcon, milestone: "M8" },
+  { title: "Assistente", href: "/assistente", icon: SparklesIcon, milestone: "M8" },
   { title: "Configurações", href: "/configuracoes", icon: SettingsIcon, milestone: "M8" },
 ];
 

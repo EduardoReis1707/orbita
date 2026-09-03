@@ -52,10 +52,13 @@ Cada milestone é um incremento testável e termina com um commit.
   - Página `/evolucao` com gráficos (peso, IMC, medidas) e seletor de
     período (7d, 30d, 3m, 6m, 1a, tudo).
   - Tabelas `weight_entries` e `measurement_entries` com RLS.
-- **M3 — Treinos**
-  - CRUD de treinos (grupo muscular, data, duração, status, observações).
-  - CRUD de exercícios (séries, repetições, carga, descanso).
-  - Histórico e comparações: evolução de carga por exercício e frequência.
+- **M3 — Treinos** ✅
+  - CRUD de treinos (grupos musculares, data, duração, status, observações)
+    em `/treinos` e `/treinos/[id]`.
+  - CRUD de exercícios por treino (séries, repetições, carga, descanso).
+  - Cards de resumo: treinos no mês, frequência semanal, volume, último treino.
+  - Aba "Por exercício": evolução da carga máxima por exercício em gráfico.
+  - Tabelas `workouts` e `exercises` com RLS.
 - **M4 — Alimentação**
   - CRUD de refeições e alimentos (quantidade, horário, calorias, macros).
   - Resumo diário e comparação entre consumo estimado e metas.

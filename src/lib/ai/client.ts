@@ -2,9 +2,10 @@ import { GoogleGenAI } from "@google/genai";
 
 /**
  * Modelo do Google Gemini usado para ler PDFs, estimar fotos e responder no
- * assistente. O `gemini-2.5-flash` tem cota gratuita generosa.
+ * assistente. O `gemini-3.6-flash` é o modelo rápido com cota gratuita
+ * (o `gemini-2.5-flash` foi descontinuado para novas contas).
  */
-export const AI_MODEL = "gemini-2.5-flash";
+export const AI_MODEL = "gemini-3.6-flash";
 
 export function isAiConfigured(): boolean {
   return Boolean(process.env.GEMINI_API_KEY);

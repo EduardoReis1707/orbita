@@ -1,47 +1,101 @@
-import type Anthropic from "@anthropic-ai/sdk";
+import type { Schema } from "@google/genai";
 
 import { AI_MODEL, createAiClient } from "./client";
 
+/** Parte de conteúdo enviada ao Gemini: texto ou dado binário embutido. */
+type Part =
+  | { text: string }
+  | { inlineData: { mimeType: string; data: string } };
+
 type StructuredParams = {
-  content: Anthropic.ContentBlockParam[];
+  content: Part[];
   system: string;
   toolName: string;
   toolDescription: string;
-  /** JSON Schema do resultado. Precisa ter `additionalProperties: false` e `required`. */
+  /** JSON Schema do resultado (com `required` e, se objeto, `properties`). */
   schema: Record<string, unknown>;
   maxTokens?: number;
 };
 
+type JsonSchema = Record<string, unknown>;
+
 /**
- * Envia blocos de conteúdo (texto, PDF, imagens) para a Claude e recebe de
- * volta um objeto que valida contra `schema`, via tool use estrito.
+ * Converte um JSON Schema (estilo Anthropic tool, com `type: ["x", "null"]` e
+ * `additionalProperties`) para o formato de `responseSchema` do Gemini
+ * (`nullable: true`, tipos em maiúsculas, sem `additionalProperties`).
+ */
+function toGeminiSchema(schema: JsonSchema): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+
+  const rawType = schema.type;
+  let type: string | undefined;
+  if (Array.isArray(rawType)) {
+    type = rawType.find((entry) => entry !== "null") as string | undefined;
+    if (rawType.includes("null")) out.nullable = true;
+  } else if (typeof rawType === "string") {
+    type = rawType;
+  }
+  if (type) out.type = type.toUpperCase();
+
+  if (typeof schema.description === "string") {
+    out.description = schema.description;
+  }
+  if (Array.isArray(schema.enum)) {
+    out.enum = schema.enum;
+    out.format = "enum";
+  }
+  if (schema.properties && typeof schema.properties === "object") {
+    const props: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(
+      schema.properties as Record<string, JsonSchema>,
+    )) {
+      props[key] = toGeminiSchema(value);
+    }
+    out.properties = props;
+    out.propertyOrdering = Object.keys(props);
+  }
+  if (Array.isArray(schema.required)) {
+    out.required = schema.required;
+  }
+  if (schema.items && typeof schema.items === "object") {
+    out.items = toGeminiSchema(schema.items as JsonSchema);
+  }
+
+  return out;
+}
+
+/**
+ * Envia partes de conteúdo (texto, PDF, imagens) ao Gemini e recebe de volta um
+ * objeto que valida contra `schema`, via saída JSON estruturada.
  */
 export async function extractStructured<T>(
   params: StructuredParams,
 ): Promise<T> {
   const client = createAiClient();
 
-  const response = await client.messages.create({
+  const response = await client.models.generateContent({
     model: AI_MODEL,
-    max_tokens: params.maxTokens ?? 8000,
-    system: params.system,
-    tools: [
-      {
-        name: params.toolName,
-        description: params.toolDescription,
-        input_schema: params.schema as Anthropic.Tool["input_schema"],
-        strict: true,
-      } as Anthropic.Tool,
-    ],
-    tool_choice: { type: "tool", name: params.toolName },
-    messages: [{ role: "user", content: params.content }],
+    contents: [{ role: "user", parts: params.content }],
+    config: {
+      systemInstruction: `${params.system}\n\n${params.toolDescription}`,
+      temperature: 0,
+      maxOutputTokens: params.maxTokens ?? 8000,
+      // Sem "pensamento": a saída é só o JSON, mais rápida e barata na cota grátis.
+      thinkingConfig: { thinkingBudget: 0 },
+      responseMimeType: "application/json",
+      responseSchema: toGeminiSchema(params.schema) as unknown as Schema,
+    },
   });
 
-  const toolUse = response.content.find((block) => block.type === "tool_use");
-  if (!toolUse || toolUse.type !== "tool_use") {
-    throw new Error("A IA não conseguiu extrair dados estruturados.");
+  const text = response.text;
+  if (!text) {
+    throw new Error("A IA não retornou dados estruturados.");
   }
-  return toolUse.input as T;
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    throw new Error("A IA retornou uma resposta em formato inesperado.");
+  }
 }
 
 type PdfParams = Omit<StructuredParams, "content"> & {
@@ -54,14 +108,12 @@ export function extractFromPdf<T>(params: PdfParams): Promise<T> {
     ...params,
     content: [
       {
-        type: "document",
-        source: {
-          type: "base64",
-          media_type: "application/pdf",
+        inlineData: {
+          mimeType: "application/pdf",
           data: params.pdfBase64,
         },
       },
-      { type: "text", text: params.instruction },
+      { text: params.instruction },
     ],
   });
 }
@@ -81,16 +133,14 @@ export function extractFromImages<T>(params: ImageParams): Promise<T> {
     ...params,
     content: [
       ...params.images.map(
-        (image): Anthropic.ContentBlockParam => ({
-          type: "image",
-          source: {
-            type: "base64",
-            media_type: image.mediaType,
+        (image): Part => ({
+          inlineData: {
+            mimeType: image.mediaType,
             data: image.base64,
           },
         }),
       ),
-      { type: "text", text: params.instruction },
+      { text: params.instruction },
     ],
   });
 }

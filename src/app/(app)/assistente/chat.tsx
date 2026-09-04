@@ -120,7 +120,7 @@ export function AssistantChat({
     return (
       <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
         O assistente ainda não está configurado. Falta adicionar a chave da
-        API da Anthropic (<code>ANTHROPIC_API_KEY</code>) no{" "}
+        API do Google Gemini (<code>GEMINI_API_KEY</code>) no{" "}
         <code>.env.local</code>.
       </div>
     );

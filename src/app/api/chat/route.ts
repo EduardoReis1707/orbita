@@ -1,5 +1,4 @@
 import type { NextRequest } from "next/server";
-import type Anthropic from "@anthropic-ai/sdk";
 
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -55,14 +54,12 @@ export async function POST(request: NextRequest) {
   });
 
   const context = await buildAssistantContext(user.id);
-  const messages: Anthropic.MessageParam[] = [
-    ...history.map(
-      (m): Anthropic.MessageParam => ({
-        role: m.role === "USER" ? "user" : "assistant",
-        content: m.content,
-      }),
-    ),
-    { role: "user", content: message },
+  const contents = [
+    ...history.map((m) => ({
+      role: m.role === "USER" ? "user" : "model",
+      parts: [{ text: m.content }],
+    })),
+    { role: "user", parts: [{ text: message }] },
   ];
 
   const client = createAiClient();
@@ -72,22 +69,22 @@ export async function POST(request: NextRequest) {
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
       try {
-        const aiStream = client.messages.stream({
+        const aiStream = await client.models.generateContentStream({
           model: AI_MODEL,
-          max_tokens: 1500,
-          system: `${ASSISTANT_SYSTEM_PROMPT}\n\n${context}`,
-          messages,
+          contents,
+          config: {
+            systemInstruction: `${ASSISTANT_SYSTEM_PROMPT}\n\n${context}`,
+            maxOutputTokens: 1500,
+            thinkingConfig: { thinkingBudget: 0 },
+          },
         });
-        for await (const event of aiStream) {
-          if (
-            event.type === "content_block_delta" &&
-            event.delta.type === "text_delta"
-          ) {
-            full += event.delta.text;
-            controller.enqueue(encoder.encode(event.delta.text));
+        for await (const chunk of aiStream) {
+          const text = chunk.text;
+          if (text) {
+            full += text;
+            controller.enqueue(encoder.encode(text));
           }
         }
-        await aiStream.finalMessage();
       } catch (error) {
         console.error("[chat]", error);
         controller.enqueue(

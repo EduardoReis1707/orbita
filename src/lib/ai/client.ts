@@ -1,18 +1,22 @@
-import Anthropic from "@anthropic-ai/sdk";
+import { GoogleGenAI } from "@google/genai";
 
-/** Modelo usado para ler os PDFs importados. */
-export const AI_MODEL = "claude-sonnet-5";
+/**
+ * Modelo do Google Gemini usado para ler PDFs, estimar fotos e responder no
+ * assistente. O `gemini-2.5-flash` tem cota gratuita generosa.
+ */
+export const AI_MODEL = "gemini-2.5-flash";
 
 export function isAiConfigured(): boolean {
-  return Boolean(process.env.ANTHROPIC_API_KEY);
+  return Boolean(process.env.GEMINI_API_KEY);
 }
 
-/** Cliente Anthropic (somente servidor). Lê ANTHROPIC_API_KEY do ambiente. */
-export function createAiClient(): Anthropic {
-  if (!process.env.ANTHROPIC_API_KEY) {
+/** Cliente Gemini (somente servidor). Lê GEMINI_API_KEY do ambiente. */
+export function createAiClient(): GoogleGenAI {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
     throw new Error(
-      "ANTHROPIC_API_KEY ausente. Adicione a chave da API da Anthropic em .env.local.",
+      "GEMINI_API_KEY ausente. Gere uma chave gratuita em aistudio.google.com/apikey e adicione em .env.local.",
     );
   }
-  return new Anthropic();
+  return new GoogleGenAI({ apiKey });
 }

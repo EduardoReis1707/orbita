@@ -8,7 +8,13 @@ import {
   useTransition,
 } from "react";
 import { useRouter } from "next/navigation";
-import { SendIcon, SparklesIcon, Trash2Icon } from "lucide-react";
+import {
+  AlertCircleIcon,
+  CheckCircle2Icon,
+  SendIcon,
+  SparklesIcon,
+  Trash2Icon,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { cn } from "@/lib/utils";
@@ -16,13 +22,26 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { clearChatAction } from "./actions";
 
-type Msg = { id: string; role: "user" | "assistant"; content: string };
+type ChatAction = { name: string; summary: string; ok: boolean };
+type Msg = {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  actions?: ChatAction[];
+};
+
+/** Eventos NDJSON emitidos por `/api/chat` (uma linha JSON por evento). */
+type StreamEvent =
+  | { type: "text"; delta: string }
+  | { type: "action"; name: string; summary: string; ok: boolean }
+  | { type: "error"; message: string }
+  | { type: "done" };
 
 const SUGGESTIONS = [
-  "Com o que posso substituir o arroz branco mantendo os carboidratos?",
+  "Registra meu peso de hoje: 88 kg",
+  "Adiciona 2 ovos e 1 pão no café da manhã",
   "Estou treinando o suficiente para o meu objetivo?",
-  "Como ajustar minhas calorias para perder gordura sem perder músculo?",
-  "Monte um exemplo de treino de pernas para casa.",
+  "Com o que posso substituir o arroz branco mantendo os carboidratos?",
 ];
 
 export function AssistantChat({
@@ -57,6 +76,33 @@ export function AssistantChat({
     };
     setMessages((current) => [...current, userMsg, assistantMsg]);
 
+    const patchAssistant = (patch: (msg: Msg) => Msg) =>
+      setMessages((current) =>
+        current.map((m) => (m.id === assistantMsg.id ? patch(m) : m)),
+      );
+
+    let sawText = false;
+    let sawAction = false;
+    let hadError = false;
+
+    const applyEvent = (event: StreamEvent) => {
+      if (event.type === "text") {
+        sawText = true;
+        patchAssistant((m) => ({ ...m, content: m.content + event.delta }));
+      } else if (event.type === "action") {
+        sawAction = true;
+        patchAssistant((m) => ({
+          ...m,
+          actions: [
+            ...(m.actions ?? []),
+            { name: event.name, summary: event.summary, ok: event.ok },
+          ],
+        }));
+      } else if (event.type === "error") {
+        hadError = true;
+      }
+    };
+
     try {
       const response = await fetch("/api/chat", {
         method: "POST",
@@ -71,33 +117,58 @@ export function AssistantChat({
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
-      let acc = "";
+      let buffer = "";
+
+      const drain = (chunk: string, flush = false) => {
+        buffer += chunk;
+        const lines = buffer.split("\n");
+        buffer = flush ? "" : (lines.pop() ?? "");
+        for (const line of flush ? [...lines, buffer].filter(Boolean) : lines) {
+          const raw = line.trim();
+          if (!raw) continue;
+          try {
+            applyEvent(JSON.parse(raw) as StreamEvent);
+          } catch {
+            // linha parcial ou ruído — ignora
+          }
+        }
+      };
+
       for (;;) {
         const { done, value } = await reader.read();
         if (done) break;
-        acc += decoder.decode(value, { stream: true });
-        setMessages((current) =>
-          current.map((m) =>
-            m.id === assistantMsg.id ? { ...m, content: acc } : m,
-          ),
-        );
+        drain(decoder.decode(value, { stream: true }));
       }
-      if (!acc.trim()) {
-        setMessages((current) =>
-          current.map((m) =>
-            m.id === assistantMsg.id
-              ? { ...m, content: "_(sem resposta)_" }
-              : m,
-          ),
-        );
+      drain("", true);
+
+      if (hadError) {
+        patchAssistant((m) => ({
+          ...m,
+          content: `${m.content}${m.content ? "\n\n" : ""}_(erro ao gerar a resposta)_`,
+        }));
+      } else if (!sawText && !sawAction) {
+        patchAssistant((m) => ({ ...m, content: "_(sem resposta)_" }));
       }
+
+      if (sawAction) router.refresh();
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "Não foi possível responder.",
       );
-      setMessages((current) =>
-        current.filter((m) => m.id !== assistantMsg.id),
-      );
+      setMessages((current) => {
+        const target = current.find((m) => m.id === assistantMsg.id);
+        if (target && !target.content && !target.actions?.length) {
+          return current.filter((m) => m.id !== assistantMsg.id);
+        }
+        return current.map((m) =>
+          m.id === assistantMsg.id
+            ? {
+                ...m,
+                content: `${m.content}${m.content ? "\n\n" : ""}_(erro ao gerar a resposta)_`,
+              }
+            : m,
+        );
+      });
     } finally {
       setSending(false);
     }
@@ -120,7 +191,7 @@ export function AssistantChat({
     return (
       <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
         O assistente ainda não está configurado. Falta adicionar a chave da
-        API do Google Gemini (<code>GEMINI_API_KEY</code>) no{" "}
+        API da Groq (<code>GROQ_API_KEY</code>) no{" "}
         <code>.env.local</code>.
       </div>
     );
@@ -153,8 +224,9 @@ export function AssistantChat({
               <SparklesIcon className="size-5" />
             </span>
             <p className="text-sm text-muted-foreground">
-              Pergunte sobre treino, alimentação ou suas metas. O assistente
-              conhece o seu perfil e os seus registros recentes.
+              Pergunte sobre treino, alimentação ou suas metas, ou peça para
+              registrar peso, refeições, treinos e metas. O assistente conhece o
+              seu perfil e os seus registros recentes.
             </p>
             <div className="flex flex-wrap justify-center gap-1.5">
               {SUGGESTIONS.map((suggestion) => (
@@ -174,25 +246,50 @@ export function AssistantChat({
             <div
               key={message.id}
               className={cn(
-                "flex",
-                message.role === "user" ? "justify-end" : "justify-start",
+                "flex flex-col gap-1",
+                message.role === "user" ? "items-end" : "items-start",
               )}
             >
-              <div
-                className={cn(
-                  "max-w-[85%] rounded-lg px-3 py-2 text-sm whitespace-pre-wrap",
-                  message.role === "user"
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted",
-                )}
-              >
-                {message.content ||
-                  (sending ? (
-                    <span className="text-muted-foreground">pensando…</span>
-                  ) : (
-                    ""
+              {message.content || sending ? (
+                <div
+                  className={cn(
+                    "max-w-[85%] rounded-lg px-3 py-2 text-sm whitespace-pre-wrap",
+                    message.role === "user"
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted",
+                  )}
+                >
+                  {message.content ||
+                    (sending ? (
+                      <span className="text-muted-foreground">pensando…</span>
+                    ) : (
+                      ""
+                    ))}
+                </div>
+              ) : null}
+
+              {message.role === "assistant" && message.actions?.length ? (
+                <div className="flex max-w-[85%] flex-wrap gap-1.5">
+                  {message.actions.map((action, index) => (
+                    <span
+                      key={`${action.name}-${index}`}
+                      className={cn(
+                        "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs",
+                        action.ok
+                          ? "border-primary/30 bg-primary/5 text-foreground"
+                          : "border-destructive/30 bg-destructive/5 text-destructive",
+                      )}
+                    >
+                      {action.ok ? (
+                        <CheckCircle2Icon className="size-3.5 shrink-0 text-primary" />
+                      ) : (
+                        <AlertCircleIcon className="size-3.5 shrink-0" />
+                      )}
+                      {action.summary}
+                    </span>
                   ))}
-              </div>
+                </div>
+              ) : null}
             </div>
           ))
         )}

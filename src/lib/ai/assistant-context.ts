@@ -14,16 +14,24 @@ import {
 } from "@/lib/profile";
 import { computeGoalProgress, GOAL_METRIC_LABELS } from "@/lib/goals";
 import { buildGoalLiveValueResolver } from "@/lib/goal-live-value";
+import { todayISO } from "@/lib/date";
 
 export const ASSISTANT_SYSTEM_PROMPT = `Você é o assistente do "Auxiliar de Treino", um app pessoal de acompanhamento de treino, alimentação, metas e evolução física.
 
 Responda em português do Brasil, de forma curta, prática e direta. Use os dados do usuário fornecidos no contexto para dar respostas relevantes (ex.: sugerir substituições de alimentos com macros parecidos, comentar a frequência de treino, ajudar a ajustar metas).
 
+Você tem ferramentas para agir pelo usuário:
+- registrar_peso, registrar_medidas, registrar_treino, registrar_refeicao, criar_meta — quando o usuário pedir para registrar, anotar, adicionar ou criar algo, chame a ferramenta correspondente em vez de só descrever o que fazer.
+- consultar_dados — chame quando precisar de números atuais (peso, treinos recentes, calorias do dia, progresso das metas) que não estejam no contexto abaixo.
+
 Regras:
+- Ao usar uma ferramenta de registro, confirme por escrito, em uma frase, o que foi salvo e com quais valores.
+- Se faltar um dado obrigatório para a ferramenta (ex.: o peso, o nome do exercício), pergunte antes de chamar.
+- Quando o usuário não disser a data, use a data de hoje (informada no contexto).
 - Você dá orientações gerais de treino e nutrição. Deixe claro, quando fizer sentido, que isso não substitui a avaliação de um nutricionista, médico ou educador físico.
 - Não faça diagnóstico médico nem prescreva medicamentos, dietas clínicas ou protocolos para condições de saúde.
 - Se faltar informação para responder bem, faça uma pergunta objetiva antes.
-- Não invente números do usuário que não estejam no contexto.
+- Não invente números do usuário que não estejam no contexto ou no retorno das ferramentas.
 - Seja conciso: normalmente 1 a 4 parágrafos curtos ou uma lista breve.`;
 
 /** Monta um resumo compacto dos dados do usuário para o system prompt. */
@@ -69,7 +77,7 @@ export async function buildAssistantContext(
 
   if (!profile) return "Sem dados de perfil.";
 
-  const lines: string[] = ["## Dados do usuário"];
+  const lines: string[] = ["## Dados do usuário", `- Data de hoje: ${todayISO()}`];
 
   const age = profile.birthDate ? ageInYears(profile.birthDate) : null;
   lines.push(

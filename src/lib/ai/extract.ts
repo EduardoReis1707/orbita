@@ -21,10 +21,11 @@ type JsonSchema = Record<string, unknown>;
 
 /**
  * Converte um JSON Schema (estilo Anthropic tool, com `type: ["x", "null"]` e
- * `additionalProperties`) para o formato de `responseSchema` do Gemini
- * (`nullable: true`, tipos em maiúsculas, sem `additionalProperties`).
+ * `additionalProperties`) para o formato de `responseSchema` / `parameters` do
+ * Gemini (`nullable: true`, tipos em maiúsculas, sem `additionalProperties`).
+ * Também usado por `assistant-tools.ts` para declarar as ferramentas do chat.
  */
-function toGeminiSchema(schema: JsonSchema): Record<string, unknown> {
+export function toGeminiSchema(schema: JsonSchema): Record<string, unknown> {
   const out: Record<string, unknown> = {};
 
   const rawType = schema.type;

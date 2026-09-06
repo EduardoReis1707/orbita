@@ -1,7 +1,9 @@
 "use client";
 
 import {
+  type ChangeEvent,
   type FormEvent,
+  type ReactNode,
   useEffect,
   useRef,
   useState,
@@ -11,9 +13,10 @@ import { useRouter } from "next/navigation";
 import {
   AlertCircleIcon,
   CheckCircle2Icon,
+  PaperclipIcon,
   SendIcon,
-  SparklesIcon,
   Trash2Icon,
+  XIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -28,6 +31,7 @@ type Msg = {
   role: "user" | "assistant";
   content: string;
   actions?: ChatAction[];
+  attachmentName?: string;
 };
 
 /** Eventos NDJSON emitidos por `/api/chat` (uma linha JSON por evento). */
@@ -36,6 +40,26 @@ type StreamEvent =
   | { type: "action"; name: string; summary: string; ok: boolean }
   | { type: "error"; message: string }
   | { type: "done" };
+
+/** Mesmo teto do servidor (`src/lib/ai/attachment-extract.ts`) — feedback já no cliente. */
+const MAX_ATTACHMENT_BYTES = 4 * 1024 * 1024;
+
+/**
+ * Interpreta só o `**negrito**` que o modelo usa nas respostas — sem trazer
+ * uma lib de markdown pra isso. Quebras de linha continuam via
+ * `whitespace-pre-wrap` no elemento pai; aqui só troca os asteriscos por
+ * `<strong>` em vez de mostrá-los literalmente.
+ */
+function renderInlineMarkdown(text: string): ReactNode {
+  const parts = text.split(/(\*\*[^*\n]+\*\*)/g);
+  return parts.map((part, index) =>
+    part.startsWith("**") && part.endsWith("**") ? (
+      <strong key={index}>{part.slice(2, -2)}</strong>
+    ) : (
+      part
+    ),
+  );
+}
 
 const SUGGESTIONS = [
   "Registra meu peso de hoje: 88 kg",
@@ -47,28 +71,46 @@ const SUGGESTIONS = [
 export function AssistantChat({
   initialMessages,
   aiEnabled,
+  welcomeMessage,
 }: {
   initialMessages: Msg[];
   aiEnabled: boolean;
+  /** Boas-vindas roteirizadas (grátis, sem IA) — mostradas sempre que o chat está vazio. */
+  welcomeMessage: string;
 }) {
   const router = useRouter();
-  const [messages, setMessages] = useState<Msg[]>(initialMessages);
+  const buildWelcome = (): Msg[] => [
+    { id: "welcome", role: "assistant", content: welcomeMessage },
+  ];
+  const [messages, setMessages] = useState<Msg[]>(
+    initialMessages.length > 0 ? initialMessages : buildWelcome(),
+  );
   const [input, setInput] = useState("");
+  const [attachedFile, setAttachedFile] = useState<File | null>(null);
   const [sending, setSending] = useState(false);
   const [clearing, startClearing] = useTransition();
   const bottomRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [messages]);
 
-  async function send(text: string) {
+  async function send(text: string, file?: File | null) {
     const trimmed = text.trim();
-    if (!trimmed || sending) return;
+    if (sending) return;
+    if (!trimmed && !file) return;
 
     setInput("");
+    setAttachedFile(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
     setSending(true);
-    const userMsg: Msg = { id: crypto.randomUUID(), role: "user", content: trimmed };
+    const userMsg: Msg = {
+      id: crypto.randomUUID(),
+      role: "user",
+      content: trimmed,
+      attachmentName: file?.name,
+    };
     const assistantMsg: Msg = {
       id: crypto.randomUUID(),
       role: "assistant",
@@ -104,11 +146,21 @@ export function AssistantChat({
     };
 
     try {
-      const response = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: trimmed }),
-      });
+      const response = file
+        ? await fetch("/api/chat", {
+            method: "POST",
+            body: (() => {
+              const formData = new FormData();
+              formData.append("message", trimmed);
+              formData.append("file", file);
+              return formData;
+            })(),
+          })
+        : await fetch("/api/chat", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ message: trimmed }),
+          });
 
       if (!response.ok || !response.body) {
         const data = await response.json().catch(() => ({}));
@@ -176,13 +228,26 @@ export function AssistantChat({
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    void send(input);
+    void send(input, attachedFile);
   }
+
+  function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (file.size > MAX_ATTACHMENT_BYTES) {
+      toast.error("Arquivo muito grande — o limite é 4 MB.");
+      event.target.value = "";
+      return;
+    }
+    setAttachedFile(file);
+  }
+
+  const isFreshChat = messages.length === 1 && messages[0]?.id === "welcome";
 
   function clearAll() {
     startClearing(async () => {
       await clearChatAction();
-      setMessages([]);
+      setMessages(buildWelcome());
       router.refresh();
     });
   }
@@ -204,7 +269,7 @@ export function AssistantChat({
           Orientações gerais — não substituem nutricionista, médico ou educador
           físico.
         </p>
-        {messages.length > 0 ? (
+        {!isFreshChat ? (
           <Button
             variant="ghost"
             size="xs"
@@ -218,31 +283,7 @@ export function AssistantChat({
       </div>
 
       <div className="flex-1 space-y-3 overflow-y-auto rounded-lg border bg-card p-3">
-        {messages.length === 0 ? (
-          <div className="flex h-full flex-col items-center justify-center gap-4 text-center">
-            <span className="flex size-10 items-center justify-center rounded-lg bg-brand-gradient text-white">
-              <SparklesIcon className="size-5" />
-            </span>
-            <p className="text-sm text-muted-foreground">
-              Pergunte sobre treino, alimentação ou suas metas, ou peça para
-              registrar peso, refeições, treinos e metas. O assistente conhece o
-              seu perfil e os seus registros recentes.
-            </p>
-            <div className="flex flex-wrap justify-center gap-1.5">
-              {SUGGESTIONS.map((suggestion) => (
-                <button
-                  key={suggestion}
-                  type="button"
-                  onClick={() => void send(suggestion)}
-                  className="rounded-full border px-3 py-1 text-xs text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
-                >
-                  {suggestion}
-                </button>
-              ))}
-            </div>
-          </div>
-        ) : (
-          messages.map((message) => (
+        {messages.map((message) => (
             <div
               key={message.id}
               className={cn(
@@ -250,6 +291,17 @@ export function AssistantChat({
                 message.role === "user" ? "items-end" : "items-start",
               )}
             >
+              {message.attachmentName ? (
+                <span
+                  className={cn(
+                    "inline-flex max-w-[85%] items-center gap-1 rounded-full border px-2 py-0.5 text-xs text-muted-foreground",
+                  )}
+                >
+                  <PaperclipIcon className="size-3 shrink-0" />
+                  {message.attachmentName}
+                </span>
+              ) : null}
+
               {message.content || sending ? (
                 <div
                   className={cn(
@@ -259,12 +311,13 @@ export function AssistantChat({
                       : "bg-muted",
                   )}
                 >
-                  {message.content ||
-                    (sending ? (
-                      <span className="text-muted-foreground">pensando…</span>
-                    ) : (
-                      ""
-                    ))}
+                  {message.content ? (
+                    renderInlineMarkdown(message.content)
+                  ) : sending ? (
+                    <span className="text-muted-foreground">pensando…</span>
+                  ) : (
+                    ""
+                  )}
                 </div>
               ) : null}
 
@@ -291,12 +344,60 @@ export function AssistantChat({
                 </div>
               ) : null}
             </div>
-          ))
-        )}
+          ))}
+        {isFreshChat ? (
+          <div className="flex flex-wrap gap-1.5 pt-1">
+            {SUGGESTIONS.map((suggestion) => (
+              <button
+                key={suggestion}
+                type="button"
+                onClick={() => void send(suggestion)}
+                className="rounded-full border px-3 py-1 text-xs text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
+              >
+                {suggestion}
+              </button>
+            ))}
+          </div>
+        ) : null}
         <div ref={bottomRef} />
       </div>
 
+      {attachedFile ? (
+        <div className="mt-2 flex items-center gap-2 self-start rounded-full border bg-card py-1 pr-1 pl-3 text-xs">
+          <PaperclipIcon className="size-3.5 shrink-0 text-muted-foreground" />
+          <span className="truncate">{attachedFile.name}</span>
+          <button
+            type="button"
+            onClick={() => {
+              setAttachedFile(null);
+              if (fileInputRef.current) fileInputRef.current.value = "";
+            }}
+            className="flex size-5 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+            aria-label="Remover anexo"
+          >
+            <XIcon className="size-3.5" />
+          </button>
+        </div>
+      ) : null}
+
       <form onSubmit={handleSubmit} className="flex gap-2 pt-2">
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".pdf,.xlsx,.xls,application/pdf,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+          hidden
+          onChange={handleFileChange}
+        />
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          disabled={sending}
+          onClick={() => fileInputRef.current?.click()}
+          aria-label="Anexar PDF ou planilha"
+        >
+          <PaperclipIcon />
+        </Button>
         <Input
           value={input}
           onChange={(event) => setInput(event.target.value)}
@@ -304,7 +405,10 @@ export function AssistantChat({
           maxLength={2000}
           disabled={sending}
         />
-        <Button type="submit" disabled={sending || !input.trim()}>
+        <Button
+          type="submit"
+          disabled={sending || (!input.trim() && !attachedFile)}
+        >
           <SendIcon />
         </Button>
       </form>

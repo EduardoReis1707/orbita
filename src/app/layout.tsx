@@ -26,10 +26,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#fdfcff" },
-    { media: "(prefers-color-scheme: dark)", color: "#1b0f24" },
-  ],
+  themeColor: "#0b0e12",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -37,13 +34,12 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html
       lang="pt-BR"
       suppressHydrationWarning
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`dark ${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col">
         <ThemeProvider
           attribute="class"
-          defaultTheme="system"
-          enableSystem
+          forcedTheme="dark"
           disableTransitionOnChange
         >
           {children}

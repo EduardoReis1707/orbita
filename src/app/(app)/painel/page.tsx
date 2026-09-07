@@ -305,8 +305,10 @@ export default async function PainelPage() {
                       href={`/treinos/${workout.id}`}
                       className="flex items-center gap-2 rounded-lg border p-2.5 text-sm hover:bg-accent"
                     >
-                      <CalendarIcon className="size-4 text-muted-foreground" />
-                      <span className="flex-1 truncate">{workout.name}</span>
+                      <CalendarIcon className="size-4 shrink-0 text-muted-foreground" />
+                      <span className="line-clamp-2 flex-1 break-words">
+                        {workout.name}
+                      </span>
                       <span className="shrink-0 text-xs text-muted-foreground">
                         {formatDateBR(workout.date)}
                       </span>
@@ -339,7 +341,9 @@ export default async function PainelPage() {
                     <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted">
                       <item.icon className="size-4 text-muted-foreground" />
                     </span>
-                    <span className="flex-1 truncate">{item.text}</span>
+                    <span className="line-clamp-2 flex-1 break-words">
+                      {item.text}
+                    </span>
                     <span className="shrink-0 text-xs text-muted-foreground">
                       {formatDateBR(item.date)}
                     </span>
@@ -353,28 +357,28 @@ export default async function PainelPage() {
 
       <div className="flex flex-wrap gap-2">
         <Link
-          href="/medidas"
+          href="/medidas?novo=peso"
           className={buttonVariants({ variant: "outline", size: "sm" })}
         >
           <ScaleIcon />
           Registrar peso
         </Link>
         <Link
-          href="/treinos"
+          href="/treinos?novo=1"
           className={buttonVariants({ variant: "outline", size: "sm" })}
         >
           <DumbbellIcon />
           Novo treino
         </Link>
         <Link
-          href="/alimentacao"
+          href="/alimentacao?novo=refeicao"
           className={buttonVariants({ variant: "outline", size: "sm" })}
         >
           <UtensilsIcon />
           Registrar refeição
         </Link>
         <Link
-          href="/metas"
+          href="/metas?novo=1"
           className={buttonVariants({ variant: "outline", size: "sm" })}
         >
           <TargetIcon />

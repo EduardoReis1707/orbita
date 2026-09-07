@@ -99,6 +99,7 @@ export function WorkoutDialog({ open, onOpenChange, workout }: Props) {
               name="name"
               defaultValue={workout?.name ?? ""}
               placeholder="Treino A — Peito e tríceps"
+              maxLength={80}
               required
             />
             <FieldError errors={fieldErrors.name} />

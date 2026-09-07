@@ -196,10 +196,10 @@ export function AssistantChat({
       if (hadError) {
         patchAssistant((m) => ({
           ...m,
-          content: `${m.content}${m.content ? "\n\n" : ""}_(erro ao gerar a resposta)_`,
+          content: `${m.content}${m.content ? "\n\n" : ""}Não consegui gerar a resposta agora. Tente de novo em instantes.`,
         }));
       } else if (!sawText && !sawAction) {
-        patchAssistant((m) => ({ ...m, content: "_(sem resposta)_" }));
+        patchAssistant((m) => ({ ...m, content: "(sem resposta)" }));
       }
 
       if (sawAction) router.refresh();
@@ -216,7 +216,7 @@ export function AssistantChat({
           m.id === assistantMsg.id
             ? {
                 ...m,
-                content: `${m.content}${m.content ? "\n\n" : ""}_(erro ao gerar a resposta)_`,
+                content: `${m.content}${m.content ? "\n\n" : ""}Não consegui gerar a resposta agora. Tente de novo em instantes.`,
               }
             : m,
         );

@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { PencilIcon, PlusIcon } from "lucide-react";
+import { toast } from "sonner";
 import type { Exercise, Workout } from "@prisma/client";
 
 import { formatDateBR } from "@/lib/date";
@@ -32,10 +33,17 @@ export function WorkoutDetail({ workout }: { workout: WorkoutWithExercises }) {
   const [editingWorkout, setEditingWorkout] = useState(false);
   const [addingExercise, setAddingExercise] = useState(false);
   const [editingExercise, setEditingExercise] = useState<Exercise | null>(null);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleting, startDeleting] = useTransition();
 
-  async function handleDeleteWorkout(formData: FormData) {
-    await deleteWorkoutAction(formData);
-    router.push("/treinos");
+  function handleDeleteWorkout() {
+    const formData = new FormData();
+    formData.set("id", String(workout.id));
+    startDeleting(async () => {
+      await deleteWorkoutAction(formData);
+      toast.success("Treino excluído.");
+      router.push("/treinos");
+    });
   }
 
   return (
@@ -76,7 +84,7 @@ export function WorkoutDetail({ workout }: { workout: WorkoutWithExercises }) {
           {workout.note ? (
             <p className="text-sm text-muted-foreground">{workout.note}</p>
           ) : null}
-          <div className="flex gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Button
               variant="outline"
               size="sm"
@@ -85,12 +93,33 @@ export function WorkoutDetail({ workout }: { workout: WorkoutWithExercises }) {
               <PencilIcon />
               Editar treino
             </Button>
-            <form action={handleDeleteWorkout}>
-              <input type="hidden" name="id" value={workout.id} />
-              <Button variant="ghost" size="sm" type="submit">
+            {confirmingDelete ? (
+              <span className="flex items-center gap-1">
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  disabled={deleting}
+                  onClick={handleDeleteWorkout}
+                >
+                  {deleting ? "Excluindo…" : "Confirmar exclusão"}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setConfirmingDelete(false)}
+                >
+                  Cancelar
+                </Button>
+              </span>
+            ) : (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setConfirmingDelete(true)}
+              >
                 Excluir treino
               </Button>
-            </form>
+            )}
           </div>
         </CardContent>
       </Card>

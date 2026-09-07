@@ -1,15 +1,15 @@
 import { StyleSheet } from "@react-pdf/renderer";
 
-/** Paleta do PDF (versão clara da identidade roxa do app). */
+/** Paleta do PDF (versão clara e impressável da identidade grafite + azul). */
 export const PDF = {
-  primary: "#69078C",
-  orchid: "#D064F7",
-  deep: "#330444",
-  text: "#2A0A38",
-  muted: "#6B5B73",
-  border: "#E6DCEC",
-  headerRow: "#F4ECF9",
-  zebra: "#FBF7FD",
+  primary: "#1F5FD0",
+  orchid: "#2FA6D8",
+  deep: "#0B1220",
+  text: "#0F1720",
+  muted: "#5A6572",
+  border: "#DCE3EC",
+  headerRow: "#EEF3FB",
+  zebra: "#F6F9FE",
   white: "#FFFFFF",
 } as const;
 
@@ -49,7 +49,7 @@ export const styles = StyleSheet.create({
     alignItems: "flex-start",
   },
   brand: { color: PDF.white, fontSize: 13, fontFamily: "Helvetica-Bold" },
-  docTitle: { color: "#EAD4F5", fontSize: 8.5, marginTop: 1 },
+  docTitle: { color: "#D6E4FB", fontSize: 8.5, marginTop: 1 },
   metaLine: { color: PDF.white, fontSize: 7.5, textAlign: "right" },
   footer: {
     position: "absolute",

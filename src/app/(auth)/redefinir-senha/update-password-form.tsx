@@ -31,7 +31,7 @@ export function UpdatePasswordForm() {
         </CardDescription>
       </CardHeader>
       <form action={action}>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-4 pb-6">
           <FormAlert state={state} />
           <div className="space-y-1.5">
             <Label htmlFor="password">Nova senha</Label>

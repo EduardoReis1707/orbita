@@ -5,6 +5,7 @@ import { getProfile, requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { formatDateShort, toISODate } from "@/lib/date";
 import { bmi } from "@/lib/metrics";
+import { totalVolume } from "@/lib/workouts";
 import { MEASUREMENT_FIELDS, type MeasurementKey } from "@/lib/measurements";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -13,8 +14,14 @@ import {
   type MeasurementPoint,
   type WeightPoint,
 } from "./evolution-charts";
+import { PeriodComparison, type ComparisonRow } from "./period-comparison";
 import { PeriodSelector } from "./period-selector";
-import { periodStartDate, resolvePeriod } from "./period";
+import {
+  periodDays,
+  periodLabel,
+  periodStartDate,
+  resolvePeriod,
+} from "./period";
 
 export const metadata = { title: "Evolução" };
 
@@ -31,7 +38,20 @@ export default async function EvolucaoPage({
   const start = periodStartDate(period);
   const dateFilter = start ? { date: { gte: start } } : {};
 
-  const [weightEntries, measurementEntries, totalWeight] = await Promise.all([
+  // Janela anterior de mesmo tamanho, para comparar "período vs período".
+  const days = periodDays(period);
+  const prevStart =
+    start && days != null
+      ? new Date(start.getTime() - days * 24 * 60 * 60 * 1000)
+      : null;
+
+  const [
+    weightEntries,
+    measurementEntries,
+    totalWeight,
+    weightPrev,
+    comparisonWorkouts,
+  ] = await Promise.all([
     prisma.weightEntry.findMany({
       where: { profileId: user.id, ...dateFilter },
       orderBy: { date: "asc" },
@@ -41,6 +61,24 @@ export default async function EvolucaoPage({
       orderBy: { date: "asc" },
     }),
     prisma.weightEntry.count({ where: { profileId: user.id } }),
+    prevStart && start
+      ? prisma.weightEntry.findMany({
+          where: { profileId: user.id, date: { gte: prevStart, lt: start } },
+          orderBy: { date: "asc" },
+        })
+      : Promise.resolve([]),
+    prevStart
+      ? prisma.workout.findMany({
+          where: {
+            profileId: user.id,
+            status: "COMPLETED",
+            date: { gte: prevStart },
+          },
+          include: {
+            exercises: { select: { sets: true, reps: true, weightKg: true } },
+          },
+        })
+      : Promise.resolve([]),
   ]);
 
   const height = profile.heightCm ?? null;
@@ -70,6 +108,97 @@ export default async function EvolucaoPage({
 
   const hasAnyData = totalWeight > 0 || measurementEntries.length > 0;
 
+  // --- Comparação período-a-período ---------------------------------------
+  const lastWeightKg =
+    weightEntries.length > 0
+      ? weightEntries[weightEntries.length - 1].weightKg
+      : null;
+  const weightGood: "up" | "down" | "any" =
+    profile.targetWeightKg != null && lastWeightKg != null
+      ? profile.targetWeightKg < lastWeightKg
+        ? "down"
+        : profile.targetWeightKg > lastWeightKg
+          ? "up"
+          : "any"
+      : "any";
+
+  const weightFrom =
+    weightPrev.length > 0
+      ? weightPrev[weightPrev.length - 1].weightKg
+      : weightEntries.length >= 2
+        ? weightEntries[0].weightKg
+        : null;
+  const weightTo = lastWeightKg;
+  const bmiFrom = height && weightFrom != null ? bmi(weightFrom, height) : null;
+  const bmiTo = height && weightTo != null ? bmi(weightTo, height) : null;
+
+  let volumeFrom: number | null = null;
+  let volumeTo: number | null = null;
+  let countFrom: number | null = null;
+  let countTo: number | null = null;
+  if (prevStart && start) {
+    const current = comparisonWorkouts.filter((w) => w.date >= start);
+    const previous = comparisonWorkouts.filter(
+      (w) => w.date >= prevStart && w.date < start,
+    );
+    volumeTo = current.reduce((s, w) => s + totalVolume(w.exercises), 0);
+    volumeFrom = previous.reduce((s, w) => s + totalVolume(w.exercises), 0);
+    if (volumeFrom === 0 && volumeTo === 0) {
+      volumeFrom = null;
+      volumeTo = null;
+    }
+    countTo = current.length;
+    countFrom = previous.length;
+  }
+
+  const comparisonRows: ComparisonRow[] = [
+    {
+      label: "Peso",
+      from: weightFrom,
+      to: weightTo,
+      unit: "kg",
+      digits: 1,
+      goodDirection: weightGood,
+      empty: "Precisa de 2 registros de peso no período",
+    },
+    ...(height
+      ? [
+          {
+            label: "IMC",
+            from: bmiFrom,
+            to: bmiTo,
+            digits: 1,
+            withPct: false,
+            goodDirection: weightGood,
+          } satisfies ComparisonRow,
+        ]
+      : []),
+    ...(prevStart
+      ? [
+          {
+            label: "Volume de treino",
+            from: volumeFrom,
+            to: volumeTo,
+            unit: "kg",
+            digits: 0,
+            goodDirection: "up",
+            empty: "Sem treinos com carga registrada",
+          } satisfies ComparisonRow,
+          {
+            label: "Treinos realizados",
+            from: countFrom,
+            to: countTo,
+            digits: 0,
+            goodDirection: "up",
+          } satisfies ComparisonRow,
+        ]
+      : []),
+  ];
+
+  const comparisonCaption = prevStart
+    ? `Período atual vs. os ${periodLabel(period).toLowerCase()} anteriores`
+    : "Do primeiro registro até agora";
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -92,13 +221,20 @@ export default async function EvolucaoPage({
           </CardContent>
         </Card>
       ) : (
-        <EvolutionCharts
-          weightData={weightData}
-          measurementData={measurementData}
-          activeMeasurementKeys={activeMeasurementKeys}
-          targetWeight={profile.targetWeightKg ?? null}
-          hasHeight={Boolean(height)}
-        />
+        <>
+          <PeriodComparison
+            title="Comparação"
+            caption={comparisonCaption}
+            rows={comparisonRows}
+          />
+          <EvolutionCharts
+            weightData={weightData}
+            measurementData={measurementData}
+            activeMeasurementKeys={activeMeasurementKeys}
+            targetWeight={profile.targetWeightKg ?? null}
+            hasHeight={Boolean(height)}
+          />
+        </>
       )}
 
       <p className="text-xs text-muted-foreground">

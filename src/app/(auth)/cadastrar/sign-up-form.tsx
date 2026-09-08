@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 
 import { initialFormState } from "@/lib/forms";
 import {
@@ -19,6 +19,9 @@ import { signUpAction } from "../actions";
 
 export function SignUpForm() {
   const [state, action] = useActionState(signUpAction, initialFormState);
+  // Mantém nome e e-mail após um erro (o React reseta o form ao concluir a action).
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
 
   return (
     <Card>
@@ -29,7 +32,7 @@ export function SignUpForm() {
         </CardDescription>
       </CardHeader>
       <form action={action}>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-4 pb-6">
           <FormAlert state={state} />
           <div className="space-y-1.5">
             <Label htmlFor="fullName">Nome</Label>
@@ -37,6 +40,8 @@ export function SignUpForm() {
               id="fullName"
               name="fullName"
               autoComplete="name"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
               required
             />
             <FieldError errors={state.fieldErrors?.fullName} />
@@ -48,6 +53,8 @@ export function SignUpForm() {
               name="email"
               type="email"
               autoComplete="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               required
             />
             <FieldError errors={state.fieldErrors?.email} />

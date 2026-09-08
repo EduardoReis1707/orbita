@@ -7,8 +7,58 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { XIcon } from "lucide-react"
 
-function Dialog({ ...props }: DialogPrimitive.Root.Props) {
-  return <DialogPrimitive.Root data-slot="dialog" {...props} />
+function Dialog({ open, onOpenChange, ...props }: DialogPrimitive.Root.Props) {
+  const pushedRef = React.useRef(false)
+  const consumingRef = React.useRef(false)
+  const closeRef = React.useRef(onOpenChange)
+
+  React.useEffect(() => {
+    closeRef.current = onOpenChange
+  })
+
+  // Enquanto o modal está aberto, empurra uma entrada no histórico para que o
+  // "voltar" do navegador (gesto instintivo no celular) apenas feche o modal em
+  // vez de sair da página e descartar o que foi digitado.
+  React.useEffect(() => {
+    if (!open || typeof window === "undefined") return
+
+    window.history.pushState({ __appDialog: true }, "")
+    pushedRef.current = true
+
+    const onPopState = () => {
+      if (consumingRef.current) {
+        consumingRef.current = false
+        return
+      }
+      pushedRef.current = false
+      const close = closeRef.current as ((next: boolean) => void) | undefined
+      close?.(false)
+    }
+    window.addEventListener("popstate", onPopState)
+
+    return () => {
+      window.removeEventListener("popstate", onPopState)
+      // Fechou por outro caminho (Esc, botão, clique fora): consome a entrada
+      // extra sem navegar para fora da página.
+      if (
+        pushedRef.current &&
+        (window.history.state as { __appDialog?: boolean } | null)?.__appDialog
+      ) {
+        pushedRef.current = false
+        consumingRef.current = true
+        window.history.back()
+      }
+    }
+  }, [open])
+
+  return (
+    <DialogPrimitive.Root
+      data-slot="dialog"
+      open={open}
+      onOpenChange={onOpenChange}
+      {...props}
+    />
+  )
 }
 
 function DialogTrigger({ ...props }: DialogPrimitive.Trigger.Props) {

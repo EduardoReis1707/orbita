@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { isAiConfigured } from "@/lib/ai/client";
 import { formatDateBR, formatDateShort, toISODate } from "@/lib/date";
 import { formatNumber } from "@/lib/metrics";
+import { computeDelta, formatDelta } from "@/lib/comparison";
 import { totalVolume } from "@/lib/workouts";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { StatCard } from "@/components/metrics/stat-card";
@@ -27,19 +28,37 @@ export default async function TreinosPage() {
 
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
   const fourWeeksAgo = new Date();
   fourWeeksAgo.setDate(fourWeeksAgo.getDate() - 28);
 
   const completed = workouts.filter((w) => w.status === "COMPLETED");
   const completedThisMonth = completed.filter((w) => w.date >= monthStart);
+  const completedPrevMonth = completed.filter(
+    (w) => w.date >= prevMonthStart && w.date < monthStart,
+  );
   const completedLast4Weeks = completed.filter((w) => w.date >= fourWeeksAgo);
 
   const volumeThisMonth = completedThisMonth.reduce(
     (sum, w) => sum + totalVolume(w.exercises),
     0,
   );
+  const volumePrevMonth = completedPrevMonth.reduce(
+    (sum, w) => sum + totalVolume(w.exercises),
+    0,
+  );
   const weeklyFrequency = completedLast4Weeks.length / 4;
   const lastCompleted = completed[0] ?? null;
+
+  // Comparação com o mês-calendário anterior (só quando há base de comparação).
+  const countMonthDelta =
+    completedPrevMonth.length > 0
+      ? computeDelta(completedPrevMonth.length, completedThisMonth.length)
+      : null;
+  const volumeMonthDelta =
+    volumePrevMonth > 0
+      ? computeDelta(volumePrevMonth, volumeThisMonth)
+      : null;
 
   const workoutCards: WorkoutCardData[] = workouts.map((workout) => {
     const { exercises, ...rest } = workout;
@@ -100,10 +119,14 @@ export default async function TreinosPage() {
         <StatCard
           label="Treinos no mês"
           value={completedThisMonth.length}
-          hint={now.toLocaleDateString("pt-BR", {
-            month: "long",
-            year: "numeric",
-          })}
+          hint={
+            countMonthDelta
+              ? `${formatDelta(countMonthDelta, { digits: 0, withPct: false })} vs. mês passado`
+              : now.toLocaleDateString("pt-BR", {
+                  month: "long",
+                  year: "numeric",
+                })
+          }
         />
         <StatCard
           label="Frequência"
@@ -115,7 +138,11 @@ export default async function TreinosPage() {
           label="Volume no mês"
           value={volumeThisMonth > 0 ? formatNumber(volumeThisMonth, 0) : "—"}
           unit={volumeThisMonth > 0 ? "kg" : undefined}
-          hint="Σ séries × reps × carga"
+          hint={
+            volumeMonthDelta
+              ? `${formatDelta(volumeMonthDelta, { digits: 0, unit: "kg" })} vs. mês passado`
+              : "Σ séries × reps × carga"
+          }
         />
         <StatCard
           label="Último treino"

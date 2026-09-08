@@ -25,3 +25,13 @@ export function periodStartDate(value: PeriodValue): Date | null {
   date.setHours(0, 0, 0, 0);
   return date;
 }
+
+/** Número de dias do período, ou null para "tudo". */
+export function periodDays(value: PeriodValue): number | null {
+  return PERIOD_OPTIONS.find((o) => o.value === value)?.days ?? null;
+}
+
+/** Rótulo curto do período (ex.: "30 dias"). */
+export function periodLabel(value: PeriodValue): string {
+  return PERIOD_OPTIONS.find((o) => o.value === value)?.label ?? value;
+}

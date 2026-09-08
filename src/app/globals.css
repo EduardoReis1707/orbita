@@ -57,91 +57,50 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
+/*
+ * Identidade única do app: grafite arquitetônico + azul elétrico, dark-only.
+ * O mesmo modelo da landing (.lp) trazido pro nível dos tokens semânticos.
+ * O tema é fixado em escuro no ThemeProvider (forcedTheme="dark"), então não
+ * existe mais bloco `.dark` — estes valores valem sempre.
+ */
 :root {
-  --background: oklch(0.995 0.003 315);
-  --foreground: oklch(0.23 0.055 313);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.23 0.055 313);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.23 0.055 313);
-  --primary: oklch(0.396 0.191 313);
-  --primary-foreground: oklch(0.99 0.005 315);
-  --secondary: oklch(0.965 0.014 315);
-  --secondary-foreground: oklch(0.32 0.12 314);
-  --muted: oklch(0.97 0.01 315);
-  --muted-foreground: oklch(0.52 0.045 313);
-  --accent: oklch(0.95 0.03 316);
-  --accent-foreground: oklch(0.35 0.15 314);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.92 0.016 315);
-  --input: oklch(0.92 0.016 315);
-  --ring: oklch(0.55 0.2 315);
-  --success: oklch(0.62 0.13 155);
-  --success-foreground: oklch(0.985 0 0);
-  --warning: oklch(0.75 0.15 70);
-  --warning-foreground: oklch(0.27 0.05 70);
-  --chart-1: oklch(0.5 0.22 314);
-  --chart-2: oklch(0.691 0.225 316);
-  --chart-3: oklch(0.62 0.12 210);
-  --chart-4: oklch(0.7 0.16 350);
-  --chart-5: oklch(0.45 0.09 300);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0.006 315);
-  --sidebar-foreground: oklch(0.23 0.055 313);
-  --sidebar-primary: oklch(0.396 0.191 313);
-  --sidebar-primary-foreground: oklch(0.99 0.005 315);
-  --sidebar-accent: oklch(0.955 0.02 316);
-  --sidebar-accent-foreground: oklch(0.35 0.15 314);
-  --sidebar-border: oklch(0.92 0.016 315);
-  --sidebar-ring: oklch(0.55 0.2 315);
-  --gradient-brand: linear-gradient(
-    135deg,
-    oklch(0.396 0.191 313),
-    oklch(0.691 0.225 316)
-  );
-}
-
-.dark {
-  --background: oklch(0.17 0.048 315);
-  --foreground: oklch(0.96 0.012 320);
-  --card: oklch(0.225 0.058 315);
-  --card-foreground: oklch(0.96 0.012 320);
-  --popover: oklch(0.225 0.058 315);
-  --popover-foreground: oklch(0.96 0.012 320);
-  --primary: oklch(0.7 0.2 320);
-  --primary-foreground: oklch(0.16 0.04 315);
-  --secondary: oklch(0.27 0.05 315);
-  --secondary-foreground: oklch(0.96 0.012 320);
-  --muted: oklch(0.27 0.05 315);
-  --muted-foreground: oklch(0.74 0.04 320);
-  --accent: oklch(0.3 0.06 316);
-  --accent-foreground: oklch(0.96 0.012 320);
+  --background: #0b0e12;
+  --foreground: #e8ecf1;
+  --card: #10151c;
+  --card-foreground: #e8ecf1;
+  --popover: #10151c;
+  --popover-foreground: #e8ecf1;
+  --primary: #4f8cff;
+  --primary-foreground: #04122e;
+  --secondary: #171e27;
+  --secondary-foreground: #e8ecf1;
+  --muted: #141b24;
+  --muted-foreground: #8b95a4;
+  --accent: #16202c;
+  --accent-foreground: #e8ecf1;
   --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 12%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.62 0.16 320);
-  --success: oklch(0.7 0.14 155);
-  --success-foreground: oklch(0.2 0.03 155);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 14%);
+  --ring: #4f8cff;
+  --success: oklch(0.72 0.15 155);
+  --success-foreground: oklch(0.16 0.03 155);
   --warning: oklch(0.8 0.14 75);
-  --warning-foreground: oklch(0.27 0.05 70);
-  --chart-1: oklch(0.62 0.2 315);
-  --chart-2: oklch(0.75 0.2 320);
-  --chart-3: oklch(0.7 0.12 205);
-  --chart-4: oklch(0.75 0.16 350);
-  --chart-5: oklch(0.6 0.1 300);
-  --sidebar: oklch(0.2 0.055 315);
-  --sidebar-foreground: oklch(0.96 0.012 320);
-  --sidebar-primary: oklch(0.7 0.2 320);
-  --sidebar-primary-foreground: oklch(0.16 0.04 315);
-  --sidebar-accent: oklch(0.28 0.055 316);
-  --sidebar-accent-foreground: oklch(0.96 0.012 320);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.62 0.16 320);
-  --gradient-brand: linear-gradient(
-    135deg,
-    oklch(0.45 0.2 314),
-    oklch(0.7 0.22 320)
-  );
+  --warning-foreground: oklch(0.24 0.04 70);
+  --chart-1: #4f8cff;
+  --chart-2: #2fe4e0;
+  --chart-3: #8b9bb4;
+  --chart-4: #f5b544;
+  --chart-5: #6b7a90;
+  --radius: 0.1875rem;
+  --sidebar: #0c1016;
+  --sidebar-foreground: #e8ecf1;
+  --sidebar-primary: #4f8cff;
+  --sidebar-primary-foreground: #04122e;
+  --sidebar-accent: #16202c;
+  --sidebar-accent-foreground: #e8ecf1;
+  --sidebar-border: oklch(1 0 0 / 8%);
+  --sidebar-ring: #4f8cff;
+  --gradient-brand: linear-gradient(135deg, #4f8cff, #2fe4e0);
 }
 
 @layer base {
@@ -153,5 +112,308 @@
   }
   html {
     @apply font-sans;
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ * Landing page ("lp") — paleta e efeitos escopados só na rota
+ * (marketing). Grafite arquitetônico + azul elétrico (#4F8CFF) com
+ * brilho ciano (#2FE4E0). Não usa os tokens roxos do app de propósito:
+ * é uma identidade própria da landing enquanto o app não migra.
+ * ------------------------------------------------------------------ */
+.lp {
+  --lp-blue: #4f8cff;
+  --lp-blue-deep: #2f6ae0;
+  --lp-cyan: #2fe4e0;
+  --lp-ink: #05070b;
+
+  /* trilha grafite -> claro, do hero pro rodapé */
+  --lp-void: #0b0e12;
+  --lp-void-2: #0f141b;
+  --lp-dusk: #171e27;
+  --lp-paper: #f4f6f8;
+  --lp-paper-2: #ffffff;
+
+  color-scheme: dark;
+  background: var(--lp-void);
+  color: #e8ecf1;
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* superfícies claras/escuras: seções optam por uma das duas */
+.lp-dark {
+  --lp-bg: var(--lp-void);
+  --lp-fg: #e8ecf1;
+  --lp-dim: #8b95a4;
+  --lp-mute: #5b6675;
+  --lp-line: rgb(255 255 255 / 0.09);
+  --lp-line-strong: rgb(255 255 255 / 0.16);
+  --lp-panel: #10151c;
+  --lp-panel-2: #141b24;
+}
+.lp-light {
+  color-scheme: light;
+  --lp-bg: var(--lp-paper);
+  --lp-fg: #10151c;
+  --lp-dim: #55606f;
+  --lp-mute: #7c8794;
+  --lp-line: rgb(8 12 18 / 0.12);
+  --lp-line-strong: rgb(8 12 18 / 0.22);
+  --lp-panel: #ffffff;
+  --lp-panel-2: #eef1f4;
+}
+
+.lp-section {
+  position: relative;
+  background: var(--lp-bg);
+  color: var(--lp-fg);
+}
+
+/* rótulos minúsculos de canto — mono, tracking aberto */
+.lp-eyebrow {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.6875rem;
+  line-height: 1.4;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--lp-mute);
+}
+
+.lp-hair {
+  border-color: var(--lp-line);
+}
+.lp-dim {
+  color: var(--lp-dim);
+}
+.lp-mute {
+  color: var(--lp-mute);
+}
+
+/* títulos assimétricos, apertados */
+.lp-display {
+  font-weight: 600;
+  letter-spacing: -0.028em;
+  line-height: 0.98;
+  text-wrap: balance;
+}
+
+/* --------- botões da landing (link com cara de botão) --------- */
+.lp-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  height: 2.75rem;
+  padding-inline: 1.15rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  border: 1px solid transparent;
+  border-radius: 2px;
+  transition:
+    transform 0.2s ease,
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+.lp-btn svg {
+  width: 1rem;
+  height: 1rem;
+  transition: transform 0.2s ease;
+}
+.lp-btn-primary {
+  background: var(--lp-blue);
+  color: #04122e;
+  box-shadow: 0 0 0 1px rgb(79 140 255 / 0.35);
+}
+.lp-btn-primary:hover {
+  background: color-mix(in srgb, var(--lp-blue) 88%, white);
+  box-shadow:
+    0 0 0 1px rgb(79 140 255 / 0.5),
+    0 12px 40px -12px rgb(47 228 224 / 0.55);
+}
+.lp-btn-primary:hover svg {
+  transform: translateX(3px);
+}
+.lp-btn-ghost {
+  border-color: var(--lp-line-strong);
+  color: var(--lp-fg);
+}
+.lp-btn-ghost:hover {
+  border-color: color-mix(in srgb, var(--lp-blue) 60%, transparent);
+  background: color-mix(in srgb, var(--lp-blue) 8%, transparent);
+}
+.lp-btn:focus-visible {
+  outline: 2px solid var(--lp-cyan);
+  outline-offset: 2px;
+}
+.lp-link {
+  color: var(--lp-dim);
+  text-decoration: none;
+  transition: color 0.18s ease;
+}
+.lp-link:hover {
+  color: var(--lp-fg);
+}
+
+/* --------- chrome de canto (nav fixa nas margens) --------- */
+.lp-chrome {
+  position: fixed;
+  inset: 0 0 auto 0;
+  z-index: 50;
+  padding: 1.15rem clamp(1rem, 3.5vw, 2.25rem);
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: start;
+  gap: 1rem;
+  pointer-events: none;
+  --lp-chrome-fg: #e8ecf1;
+  --lp-chrome-dim: #8b95a4;
+  --lp-chrome-line: rgb(255 255 255 / 0.14);
+  --lp-chrome-bg: var(--lp-void);
+  color: var(--lp-chrome-fg);
+  transition: color 0.35s ease;
+}
+.lp-chrome::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: linear-gradient(
+    var(--lp-chrome-bg) 0%,
+    color-mix(in srgb, var(--lp-chrome-bg) 50%, transparent) 52%,
+    transparent 100%
+  );
+  transition: background 0.35s ease;
+}
+.lp-chrome[data-surface="light"] {
+  --lp-chrome-fg: #10151c;
+  --lp-chrome-dim: #55606f;
+  --lp-chrome-line: rgb(8 12 18 / 0.16);
+  --lp-chrome-bg: var(--lp-paper);
+}
+.lp-chrome a,
+.lp-chrome button {
+  pointer-events: auto;
+}
+.lp-chrome-nav a {
+  color: var(--lp-chrome-dim);
+  transition: color 0.18s ease;
+}
+.lp-chrome-nav a:hover,
+.lp-chrome-nav a[data-active="true"] {
+  color: var(--lp-chrome-fg);
+}
+
+/* --------- palco 3D do hero --------- */
+.lp-track {
+  position: relative;
+}
+.lp-stage-wrap {
+  position: sticky;
+  top: 0;
+  height: 100svh;
+  overflow: hidden;
+}
+.lp-stage {
+  position: absolute;
+  inset: 0;
+  perspective: 1400px;
+  perspective-origin: 50% 44%;
+}
+.lp-stage-inner {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+.lp-card {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: clamp(148px, 20vw, 264px);
+  aspect-ratio: 3 / 2;
+  border: 1px solid rgb(255 255 255 / 0.06);
+  background: var(--lp-void-2);
+  transform-style: preserve-3d;
+  will-change: transform, filter, opacity;
+  /* bordas "esmagadas": o miolo aparece, as bordas afundam no fundo */
+  box-shadow:
+    inset 0 0 0 1px rgb(255 255 255 / 0.02),
+    inset 0 0 44px 14px var(--lp-void);
+}
+.lp-card-body {
+  position: absolute;
+  inset: 0;
+  color: #6b7685;
+  overflow: hidden;
+}
+.lp-card--focal {
+  background: #141c26;
+  border-color: color-mix(in srgb, var(--lp-cyan) 55%, transparent);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--lp-cyan) 22%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--lp-blue) 30%, transparent),
+    0 30px 90px -30px color-mix(in srgb, var(--lp-cyan) 60%, transparent);
+}
+.lp-card--focal .lp-card-body {
+  color: #aab6c6;
+}
+
+/* brilho ambiente atrás do cluster */
+.lp-hero-glow {
+  position: absolute;
+  left: 50%;
+  top: 42%;
+  width: min(70vw, 720px);
+  aspect-ratio: 1;
+  translate: -50% -50%;
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--lp-blue) 26%, transparent),
+    transparent 62%
+  );
+  filter: blur(30px);
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+/* --------- reveal no scroll (com stagger) --------- */
+.lp-reveal > * {
+  opacity: 0;
+  transform: translateY(22px);
+  transition:
+    opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+  transition-delay: calc(var(--i, 0) * 70ms);
+}
+.lp-reveal[data-in="true"] > * {
+  opacity: 1;
+  transform: none;
+}
+
+/* --------- arco de "como funciona" --------- */
+@keyframes lp-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.lp-arc-ring {
+  animation: lp-spin 48s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lp-stage-inner,
+  .lp-card {
+    transition: none !important;
+  }
+  .lp-reveal > * {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+  .lp-arc-ring {
+    animation: none;
   }
 }

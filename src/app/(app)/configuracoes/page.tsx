@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 
 import { getProfile, getUser, requireUser } from "@/lib/auth";
-import { ThemeToggle } from "@/components/theme-toggle";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ProfileForm } from "./profile-form";
 import { PasswordForm } from "./password-form";
@@ -16,21 +15,6 @@ export default async function ConfiguracoesPage() {
   return (
     <div className="mx-auto max-w-2xl space-y-4">
       <ProfileForm profile={profile} />
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Aparência</CardTitle>
-        </CardHeader>
-        <CardContent className="flex items-center justify-between">
-          <div>
-            <p className="text-sm font-medium">Tema</p>
-            <p className="text-xs text-muted-foreground">
-              Claro, escuro ou seguindo o sistema.
-            </p>
-          </div>
-          <ThemeToggle />
-        </CardContent>
-      </Card>
 
       <PasswordForm />
 

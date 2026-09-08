@@ -48,7 +48,14 @@ export async function signInAction(
     };
   }
 
-  redirect("/painel");
+  const nextRaw = formData.get("next");
+  const next =
+    typeof nextRaw === "string" &&
+    nextRaw.startsWith("/") &&
+    !nextRaw.startsWith("//")
+      ? nextRaw
+      : "/painel";
+  redirect(next);
 }
 
 // ---------------------------------------------------------------------------

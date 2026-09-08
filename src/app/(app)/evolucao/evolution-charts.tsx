@@ -19,8 +19,6 @@ import {
 } from "@/components/ui/card";
 import {
   ChartContainer,
-  ChartLegend,
-  ChartLegendContent,
   ChartTooltip,
   ChartTooltipContent,
   type ChartConfig,
@@ -206,7 +204,6 @@ export function EvolutionCharts({
                 <XAxis dataKey="label" {...axis} minTickGap={24} />
                 <YAxis {...axis} width={38} />
                 <ChartTooltip content={<ChartTooltipContent />} />
-                <ChartLegend content={<ChartLegendContent />} />
                 {activeMeasurementKeys.map((key) => (
                   <Line
                     key={key}
@@ -220,6 +217,28 @@ export function EvolutionCharts({
                 ))}
               </LineChart>
             </ChartContainer>
+            {/* Legenda própria: quebra em várias linhas no mobile em vez de
+                estourar o card e cortar os rótulos. */}
+            <ul className="mt-3 flex flex-wrap justify-center gap-x-4 gap-y-1.5">
+              {activeMeasurementKeys.map((key, index) => {
+                const field = MEASUREMENT_FIELDS.find((f) => f.key === key);
+                return (
+                  <li
+                    key={key}
+                    className="flex items-center gap-1.5 text-xs text-muted-foreground"
+                  >
+                    <span
+                      className="size-2 shrink-0 rounded-[2px]"
+                      style={{
+                        backgroundColor:
+                          MEASUREMENT_COLORS[index % MEASUREMENT_COLORS.length],
+                      }}
+                    />
+                    {field?.label ?? key}
+                  </li>
+                );
+              })}
+            </ul>
           </CardContent>
         </Card>
       ) : null}

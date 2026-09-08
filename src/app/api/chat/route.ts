@@ -46,6 +46,33 @@ type StreamEvent =
   | { type: "error"; message: string }
   | { type: "done" };
 
+/**
+ * Traduz uma falha da chamada à Groq numa frase curta que diz de verdade o que
+ * aconteceu — chave inválida, limite de uso, modelo indisponível, rede fora do
+ * ar — em vez de um "erro" genérico que não ajuda ninguém a resolver.
+ */
+function describeChatError(error: unknown): string {
+  if (error instanceof Groq.APIError) {
+    const status = error.status;
+    if (status === 401 || status === 403) {
+      return "O assistente está com a chave de acesso à IA inválida ou sem permissão. Quem cuida do app precisa revisar a GROQ_API_KEY.";
+    }
+    if (status === 429) {
+      return "O assistente bateu no limite de uso agora há pouco. Espere um ou dois minutos e tente de novo.";
+    }
+    if (status === 404) {
+      return "O modelo de IA configurado não está disponível para esta conta. Quem cuida do app precisa revisar o modelo em uso.";
+    }
+    if (status != null && status >= 500) {
+      return "O serviço de IA está instável neste momento. Tente de novo em instantes.";
+    }
+  }
+  if (error instanceof Groq.APIConnectionError) {
+    return "Não consegui falar com o serviço de IA — parece um problema de conexão. Tente de novo em instantes.";
+  }
+  return "Não consegui gerar a resposta agora. Tente de novo em instantes.";
+}
+
 type Message = Groq.Chat.Completions.ChatCompletionMessageParam;
 type ToolCall = Groq.Chat.Completions.ChatCompletionMessageToolCall;
 
@@ -323,7 +350,7 @@ export async function POST(request: NextRequest) {
         }
       } catch (error) {
         console.error("[chat]", error);
-        send({ type: "error", message: "erro ao gerar a resposta" });
+        send({ type: "error", message: describeChatError(error) });
       } finally {
         send({ type: "done" });
         controller.close();

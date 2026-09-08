@@ -106,6 +106,7 @@ export function FoodItemDialog({ mealId, open, onOpenChange, item }: Props) {
                 name="calories"
                 type="number"
                 inputMode="decimal"
+                step="any"
                 min={0}
                 defaultValue={item?.calories ?? ""}
               />
@@ -118,6 +119,7 @@ export function FoodItemDialog({ mealId, open, onOpenChange, item }: Props) {
                 name="proteinG"
                 type="number"
                 inputMode="decimal"
+                step="any"
                 min={0}
                 defaultValue={item?.proteinG ?? ""}
               />
@@ -130,6 +132,7 @@ export function FoodItemDialog({ mealId, open, onOpenChange, item }: Props) {
                 name="carbsG"
                 type="number"
                 inputMode="decimal"
+                step="any"
                 min={0}
                 defaultValue={item?.carbsG ?? ""}
               />
@@ -142,6 +145,7 @@ export function FoodItemDialog({ mealId, open, onOpenChange, item }: Props) {
                 name="fatG"
                 type="number"
                 inputMode="decimal"
+                step="any"
                 min={0}
                 defaultValue={item?.fatG ?? ""}
               />

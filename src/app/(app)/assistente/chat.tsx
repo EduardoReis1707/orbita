@@ -3,6 +3,7 @@
 import {
   type ChangeEvent,
   type FormEvent,
+  type KeyboardEvent,
   type ReactNode,
   useEffect,
   useRef,
@@ -14,6 +15,7 @@ import {
   AlertCircleIcon,
   CheckCircle2Icon,
   PaperclipIcon,
+  RotateCcwIcon,
   SendIcon,
   Trash2Icon,
   XIcon,
@@ -22,7 +24,6 @@ import { toast } from "sonner";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { clearChatAction } from "./actions";
 
 type ChatAction = { name: string; summary: string; ok: boolean };
@@ -88,9 +89,14 @@ export function AssistantChat({
   const [input, setInput] = useState("");
   const [attachedFile, setAttachedFile] = useState<File | null>(null);
   const [sending, setSending] = useState(false);
+  /** Última falha do envio anterior — habilita o botão "Tentar de novo". */
+  const [retryError, setRetryError] = useState<string | null>(null);
   const [clearing, startClearing] = useTransition();
   const bottomRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  /** O que foi enviado por último, pra reenviar igual no "Tentar de novo". */
+  const lastSendRef = useRef<{ text: string; file: File | null } | null>(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
@@ -101,9 +107,12 @@ export function AssistantChat({
     if (sending) return;
     if (!trimmed && !file) return;
 
+    lastSendRef.current = { text: trimmed, file: file ?? null };
+    setRetryError(null);
     setInput("");
     setAttachedFile(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
+    if (textareaRef.current) textareaRef.current.style.height = "auto";
     setSending(true);
     const userMsg: Msg = {
       id: crypto.randomUUID(),
@@ -126,6 +135,7 @@ export function AssistantChat({
     let sawText = false;
     let sawAction = false;
     let hadError = false;
+    let errorMessage = "";
 
     const applyEvent = (event: StreamEvent) => {
       if (event.type === "text") {
@@ -142,8 +152,12 @@ export function AssistantChat({
         }));
       } else if (event.type === "error") {
         hadError = true;
+        if (event.message) errorMessage = event.message;
       }
     };
+
+    const fallbackError =
+      "Não consegui gerar a resposta agora. Tente de novo em instantes.";
 
     try {
       const response = file
@@ -194,19 +208,24 @@ export function AssistantChat({
       drain("", true);
 
       if (hadError) {
+        const shown = errorMessage || fallbackError;
         patchAssistant((m) => ({
           ...m,
-          content: `${m.content}${m.content ? "\n\n" : ""}Não consegui gerar a resposta agora. Tente de novo em instantes.`,
+          content: `${m.content}${m.content ? "\n\n" : ""}${shown}`,
         }));
+        setRetryError(shown);
       } else if (!sawText && !sawAction) {
         patchAssistant((m) => ({ ...m, content: "(sem resposta)" }));
       }
 
       if (sawAction) router.refresh();
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Não foi possível responder.",
-      );
+      const shown =
+        error instanceof Error && error.message
+          ? error.message
+          : fallbackError;
+      toast.error(shown);
+      setRetryError(shown);
       setMessages((current) => {
         const target = current.find((m) => m.id === assistantMsg.id);
         if (target && !target.content && !target.actions?.length) {
@@ -216,7 +235,7 @@ export function AssistantChat({
           m.id === assistantMsg.id
             ? {
                 ...m,
-                content: `${m.content}${m.content ? "\n\n" : ""}Não consegui gerar a resposta agora. Tente de novo em instantes.`,
+                content: `${m.content}${m.content ? "\n\n" : ""}${shown}`,
               }
             : m,
         );
@@ -226,9 +245,33 @@ export function AssistantChat({
     }
   }
 
+  function retryLastSend() {
+    const last = lastSendRef.current;
+    if (!last || sending) return;
+    void send(last.text, last.file);
+  }
+
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     void send(input, attachedFile);
+  }
+
+  function handleComposeKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
+    // Enter envia; Shift+Enter pula linha. `isComposing` evita enviar no meio
+    // de um acento/IME.
+    if (
+      event.key === "Enter" &&
+      !event.shiftKey &&
+      !event.nativeEvent.isComposing
+    ) {
+      event.preventDefault();
+      void send(input, attachedFile);
+    }
+  }
+
+  function autoGrowTextarea(el: HTMLTextAreaElement) {
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight, 140)}px`;
   }
 
   function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
@@ -248,6 +291,8 @@ export function AssistantChat({
     startClearing(async () => {
       await clearChatAction();
       setMessages(buildWelcome());
+      setRetryError(null);
+      lastSendRef.current = null;
       router.refresh();
     });
   }
@@ -359,6 +404,14 @@ export function AssistantChat({
             ))}
           </div>
         ) : null}
+        {retryError && !sending ? (
+          <div className="flex items-center gap-2 pt-1">
+            <Button variant="outline" size="sm" onClick={retryLastSend}>
+              <RotateCcwIcon />
+              Tentar de novo
+            </Button>
+          </div>
+        ) : null}
         <div ref={bottomRef} />
       </div>
 
@@ -380,7 +433,7 @@ export function AssistantChat({
         </div>
       ) : null}
 
-      <form onSubmit={handleSubmit} className="flex gap-2 pt-2">
+      <form onSubmit={handleSubmit} className="flex items-end gap-2 pt-2">
         <input
           ref={fileInputRef}
           type="file"
@@ -398,12 +451,19 @@ export function AssistantChat({
         >
           <PaperclipIcon />
         </Button>
-        <Input
+        <textarea
+          ref={textareaRef}
           value={input}
-          onChange={(event) => setInput(event.target.value)}
+          onChange={(event) => {
+            setInput(event.target.value);
+            autoGrowTextarea(event.target);
+          }}
+          onKeyDown={handleComposeKeyDown}
+          rows={1}
           placeholder="Escreva a sua pergunta…"
           maxLength={2000}
           disabled={sending}
+          className="max-h-35 min-h-8 flex-1 resize-none rounded-lg border border-input bg-transparent px-2.5 py-1.5 text-base leading-relaxed transition-colors outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm dark:bg-input/30"
         />
         <Button
           type="submit"
@@ -412,6 +472,9 @@ export function AssistantChat({
           <SendIcon />
         </Button>
       </form>
+      <p className="pt-1 text-center text-[0.7rem] text-muted-foreground">
+        Enter envia · Shift+Enter pula linha
+      </p>
     </div>
   );
 }

@@ -20,7 +20,10 @@ export async function proxy(request: NextRequest) {
   const isPublicRoute = pathname.startsWith("/auth/");
 
   if (!user && !isOpen && !isAuth && !isPublicRoute) {
-    return redirectTo(request, "/entrar", response);
+    // Sinaliza pra tela de login que a pessoa foi trazida de uma rota protegida
+    // (sessão ausente/expirada) e pra onde ela queria ir.
+    const search = new URLSearchParams({ next: `${pathname}${request.nextUrl.search}` });
+    return redirectTo(request, "/entrar", response, `?${search.toString()}`);
   }
 
   if (user && isAuth) {
@@ -30,12 +33,23 @@ export async function proxy(request: NextRequest) {
   return response;
 }
 
-function redirectTo(request: NextRequest, path: string, base: NextResponse) {
+function redirectTo(
+  request: NextRequest,
+  path: string,
+  base: NextResponse,
+  search = "",
+) {
   const url = request.nextUrl.clone();
   url.pathname = path;
-  url.search = "";
+  url.search = search;
   const redirect = NextResponse.redirect(url);
-  base.cookies.getAll().forEach((cookie) => redirect.cookies.set(cookie));
+  // Copia o cabeçalho Set-Cookie inteiro dos cookies de sessão já revalidados,
+  // preservando todas as flags (httpOnly, path, maxAge, sameSite). Reatribuir
+  // via `cookies.set({ name, value })` perde essas opções e pode encurtar ou
+  // corromper o cookie de sessão em qualquer redirect.
+  for (const cookie of base.headers.getSetCookie()) {
+    redirect.headers.append("set-cookie", cookie);
+  }
   return redirect;
 }
 

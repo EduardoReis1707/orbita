@@ -13,6 +13,7 @@ import { getProfile, requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { formatDateBR, formatDateShort, todayISO, parseISODate } from "@/lib/date";
 import { bmi, bmiBand, formatNumber } from "@/lib/metrics";
+import { computeDelta, formatDelta } from "@/lib/comparison";
 import { computeGoalProgress, GOAL_METRIC_LABELS, goalUnit } from "@/lib/goals";
 import { buildGoalLiveValueResolver } from "@/lib/goal-live-value";
 import { buttonVariants } from "@/components/ui/button";
@@ -25,6 +26,7 @@ import {
 import { StatCard } from "@/components/metrics/stat-card";
 import { WeightMiniChart } from "@/components/metrics/weight-mini-chart";
 import { cn } from "@/lib/utils";
+import { TodayCard, type TodayState } from "./today-card";
 
 export const metadata = { title: "Painel" };
 
@@ -51,6 +53,7 @@ export default async function PainelPage() {
     activeGoals,
     recentWeights,
     recentMeasurements,
+    lastMeal,
     resolver,
   ] = await Promise.all([
     prisma.weightEntry.findMany({
@@ -95,6 +98,11 @@ export default async function PainelPage() {
       where: { profileId: user.id },
       orderBy: { date: "desc" },
       take: 2,
+    }),
+    prisma.meal.findFirst({
+      where: { profileId: user.id },
+      orderBy: { date: "desc" },
+      select: { date: true },
     }),
     buildGoalLiveValueResolver(user.id),
   ]);
@@ -160,15 +168,108 @@ export default async function PainelPage() {
     .sort((a, b) => b.date.getTime() - a.date.getTime())
     .slice(0, 8);
 
+  // --- "O que fazer hoje" + acolhimento de retorno ----------------------
+  const daysSince = (date: Date) =>
+    Math.round((today.getTime() - date.getTime()) / 86_400_000);
+
+  const plannedToday =
+    upcoming.find((w) => w.date.getTime() === today.getTime()) ?? null;
+  const plannedFuture =
+    upcoming.find((w) => w.date.getTime() > today.getTime()) ?? null;
+  const lastCompleted = recentWorkouts[0] ?? null;
+  const doneToday =
+    lastCompleted != null && lastCompleted.date.getTime() === today.getTime();
+  const daysSinceWorkout =
+    lastCompleted != null ? daysSince(lastCompleted.date) : null;
+
+  const todayState: TodayState = plannedToday
+    ? { kind: "planned-today", id: plannedToday.id, name: plannedToday.name }
+    : doneToday && lastCompleted
+      ? {
+          kind: "done-today",
+          name: lastCompleted.name,
+          trainedThisWeek: weekWorkoutCount,
+        }
+      : plannedFuture
+        ? {
+            kind: "planned-future",
+            id: plannedFuture.id,
+            name: plannedFuture.name,
+            date: formatDateBR(plannedFuture.date),
+          }
+        : {
+            kind: "rest",
+            trainedThisWeek: weekWorkoutCount,
+            daysSinceWorkout,
+          };
+
+  const activityDates = [
+    latestWeight?.date,
+    lastCompleted?.date,
+    recentMeasurements[0]?.date,
+    lastMeal?.date,
+  ].filter((d): d is Date => d instanceof Date);
+  const daysSinceActivity =
+    activityDates.length > 0
+      ? Math.min(...activityDates.map(daysSince))
+      : null;
+
+  const welcomeLine =
+    daysSinceActivity != null && daysSinceActivity >= 7
+      ? `Que bom te ver de volta! 👋 Faz ${daysSinceActivity} dias desde o seu último registro.`
+      : daysSinceWorkout != null && daysSinceWorkout >= 7
+        ? `Faz ${daysSinceWorkout} dias sem treinar — dá pra retomar leve hoje.`
+        : "Aqui está o resumo da sua evolução.";
+
+  // Variação de peso ~30 dias (para o card "Peso atual").
+  const weightMonthAgo =
+    [...weights90].reverse().find((e) => daysSince(e.date) >= 25) ??
+    (weights90.length >= 2 ? weights90[0] : null);
+  const weightDelta =
+    latestWeight && weightMonthAgo && weightMonthAgo.id !== latestWeight.id
+      ? computeDelta(weightMonthAgo.weightKg, latestWeight.weightKg)
+      : null;
+
   return (
     <div className="space-y-6">
       <div>
         <h1 className="font-heading text-xl font-semibold">
           Olá, {firstName}! 👋
         </h1>
-        <p className="text-sm text-muted-foreground">
-          Aqui está o resumo da sua evolução.
-        </p>
+        <p className="text-sm text-muted-foreground">{welcomeLine}</p>
+      </div>
+
+      <TodayCard state={todayState} />
+
+      <div className="flex flex-wrap gap-2">
+        <Link
+          href="/medidas?novo=peso"
+          className={buttonVariants({ variant: "outline", size: "sm" })}
+        >
+          <ScaleIcon />
+          Registrar peso
+        </Link>
+        <Link
+          href="/treinos?novo=1"
+          className={buttonVariants({ variant: "outline", size: "sm" })}
+        >
+          <DumbbellIcon />
+          Novo treino
+        </Link>
+        <Link
+          href="/alimentacao?novo=refeicao"
+          className={buttonVariants({ variant: "outline", size: "sm" })}
+        >
+          <UtensilsIcon />
+          Registrar refeição
+        </Link>
+        <Link
+          href="/metas?novo=1"
+          className={buttonVariants({ variant: "outline", size: "sm" })}
+        >
+          <TargetIcon />
+          Nova meta
+        </Link>
       </div>
 
       <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -178,7 +279,9 @@ export default async function PainelPage() {
           unit={latestWeight ? "kg" : undefined}
           hint={
             latestWeight
-              ? formatDateBR(latestWeight.date)
+              ? weightDelta
+                ? `${formatDelta(weightDelta, { unit: "kg", withPct: false })} em ~30 dias`
+                : formatDateBR(latestWeight.date)
               : "Nenhum registro"
           }
         />
@@ -355,36 +458,6 @@ export default async function PainelPage() {
         </CardContent>
       </Card>
 
-      <div className="flex flex-wrap gap-2">
-        <Link
-          href="/medidas?novo=peso"
-          className={buttonVariants({ variant: "outline", size: "sm" })}
-        >
-          <ScaleIcon />
-          Registrar peso
-        </Link>
-        <Link
-          href="/treinos?novo=1"
-          className={buttonVariants({ variant: "outline", size: "sm" })}
-        >
-          <DumbbellIcon />
-          Novo treino
-        </Link>
-        <Link
-          href="/alimentacao?novo=refeicao"
-          className={buttonVariants({ variant: "outline", size: "sm" })}
-        >
-          <UtensilsIcon />
-          Registrar refeição
-        </Link>
-        <Link
-          href="/metas?novo=1"
-          className={buttonVariants({ variant: "outline", size: "sm" })}
-        >
-          <TargetIcon />
-          Nova meta
-        </Link>
-      </div>
     </div>
   );
 }

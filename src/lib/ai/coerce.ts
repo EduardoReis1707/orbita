@@ -1,4 +1,4 @@
-import { parseISODate } from "@/lib/date";
+import { parseISODate, todayISO } from "@/lib/date";
 
 /**
  * Helpers de coerção usados pelas ferramentas do assistente (`assistant-tools.ts`).
@@ -9,6 +9,7 @@ import { parseISODate } from "@/lib/date";
 function toNumber(value: unknown): number | null {
   if (typeof value === "number") return Number.isFinite(value) ? value : null;
   if (typeof value === "string") {
+    if (!value.trim()) return null;
     const n = Number(value.trim().replace(",", "."));
     return Number.isFinite(n) ? n : null;
   }
@@ -73,12 +74,10 @@ export function round1(value: unknown): number | null {
  * Datas no futuro são recuadas para hoje (o app não aceita registro futuro).
  */
 export function parseDateOrToday(value: unknown): Date {
-  const parsed =
-    typeof value === "string" ? parseISODate(value.trim()) : null;
-  const date = parsed ?? new Date();
-  const today = new Date();
-  today.setUTCHours(0, 0, 0, 0);
-  return date.getTime() > today.getTime() ? today : date;
+  if (value == null || value === '') return parseISODate(todayISO())!;
+  const parsed = typeof value === 'string' ? parseISODate(value.trim()) : null;
+  if (!parsed) throw new Error('Data inválida. Use AAAA-MM-DD.');
+  return parsed;
 }
 
 /**

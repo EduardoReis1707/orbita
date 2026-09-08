@@ -90,6 +90,7 @@ export async function POST(request: NextRequest) {
   let promptForModel: string;
   /** O que fica salvo no histórico — resumido, sem o texto extraído do anexo. */
   let persistedMessage: string;
+  let attachmentOnly = false;
 
   const contentType = request.headers.get("content-type") ?? "";
   if (contentType.includes("multipart/form-data")) {
@@ -134,7 +135,8 @@ export async function POST(request: NextRequest) {
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());
-    const extracted = await extractAttachmentText(buffer, file.name, file.type);
+    const extracted = await extractAttachmentText(buffer, file.name, file.type).catch(() => ({ ok: false as const, error: 'Não consegui ler esse arquivo. Confira o formato e tente novamente.' }));
+    attachmentOnly = true;
     if (!extracted.ok) {
       return Response.json({ error: extracted.error }, { status: 400 });
     }
@@ -152,7 +154,7 @@ export async function POST(request: NextRequest) {
     }
 
     const message =
-      typeof body.message === "string" ? body.message.trim() : "";
+      body != null && typeof body.message === "string" ? body.message.trim() : "";
     if (message.length === 0) {
       return Response.json({ error: "Mensagem vazia." }, { status: 400 });
     }
@@ -168,7 +170,7 @@ export async function POST(request: NextRequest) {
 
   const history = await prisma.chatMessage.findMany({
     where: { profileId: user.id },
-    orderBy: { createdAt: "desc" },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     take: HISTORY_LIMIT,
   });
   history.reverse();
@@ -199,7 +201,7 @@ export async function POST(request: NextRequest) {
   ];
 
   const tools: Groq.Chat.Completions.ChatCompletionTool[] =
-    buildToolDeclarations();
+    attachmentOnly ? [] : buildToolDeclarations();
   const client = createGroqClient();
   const encoder = new TextEncoder();
 
@@ -214,6 +216,7 @@ export async function POST(request: NextRequest) {
       let fullAnswer = "";
       const actionSummaries: string[] = [];
       let toolCallsUsed = 0;
+      let completed = false;
 
       try {
         for (let iteration = 0; iteration < MAX_ITERATIONS; iteration += 1) {
@@ -229,7 +232,8 @@ export async function POST(request: NextRequest) {
             const groqStream = await client.chat.completions.create({
               model: GROQ_MODEL,
               messages,
-              tools,
+              ...(tools.length ? { tools } : { tool_choice: "none" as const }),
+              max_completion_tokens: 3000,
               stream: true,
             });
 
@@ -280,8 +284,9 @@ export async function POST(request: NextRequest) {
           }
 
           fullAnswer += turnText;
-          if (pending.size === 0) break;
+          if (pending.size === 0) { completed = true; break; }
 
+          if (attachmentOnly) throw new Error('Ferramentas não permitidas na leitura de anexo.');
           const calls = [...pending.values()];
           const toolCalls: ToolCall[] = calls.map((call) => ({
             id: call.id,
@@ -307,6 +312,7 @@ export async function POST(request: NextRequest) {
               let args: Record<string, unknown> = {};
               try {
                 args = call.args ? JSON.parse(call.args) : {};
+                if (!args || Array.isArray(args) || typeof args !== "object") throw new Error("Argumentos inválidos");
               } catch {
                 result = {
                   ok: false,
@@ -348,12 +354,11 @@ export async function POST(request: NextRequest) {
             });
           }
         }
+        if (!completed) send({ type: 'error', message: 'Cheguei ao limite de ações desta mensagem. Confira o que já foi realizado antes de continuar.' });
       } catch (error) {
-        console.error("[chat]", error);
+        console.error("[chat]", error instanceof Groq.APIError ? { status: error.status, name: error.name } : { name: error instanceof Error ? error.name : "UnknownError" });
         send({ type: "error", message: describeChatError(error) });
       } finally {
-        send({ type: "done" });
-        controller.close();
 
         const toPersist =
           fullAnswer.trim() ||
@@ -367,8 +372,10 @@ export async function POST(request: NextRequest) {
                 content: toPersist,
               },
             })
-            .catch(() => {});
+            .catch(() => { send({ type: "error", message: "A resposta foi gerada, mas não consegui salvar o histórico." }); });
         }
+        send({ type: "done" });
+        controller.close();
       }
     },
   });

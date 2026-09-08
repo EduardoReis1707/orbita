@@ -103,7 +103,10 @@ export async function deleteDocumentAction(formData: FormData): Promise<void> {
   if (!doc) return;
 
   const supabase = createAdminClient();
-  await supabase.storage.from(STORAGE_BUCKET).remove([doc.storagePath]);
+  const { error } = await supabase.storage.from(STORAGE_BUCKET).remove([doc.storagePath]);
+  if (error) {
+    throw new Error("Não foi possível excluir o arquivo. Tente novamente.");
+  }
   await prisma.fileDocument.delete({ where: { id: doc.id } });
 
   revalidatePath("/arquivos");

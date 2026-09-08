@@ -1,5 +1,7 @@
 import type { Goal, GoalMetric } from "@prisma/client";
 
+import { parseISODate, todayISO, toISODate } from "@/lib/date";
+
 export const GOAL_METRIC_LABELS: Record<GoalMetric, string> = {
   WEIGHT: "Peso corporal",
   BODY_FAT: "Percentual de gordura",
@@ -87,11 +89,12 @@ export function computeGoalProgress(
 }
 
 /** Dias restantes até o prazo (negativo = atrasado). Null se sem prazo. */
-export function daysUntil(deadline: Date | null): number | null {
+export function daysUntil(
+  deadline: Date | null,
+  now: Date = new Date(),
+): number | null {
   if (!deadline) return null;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const target = new Date(deadline);
-  target.setHours(0, 0, 0, 0);
+  const today = parseISODate(todayISO(now))!;
+  const target = parseISODate(toISODate(deadline))!;
   return Math.round((target.getTime() - today.getTime()) / 86_400_000);
 }

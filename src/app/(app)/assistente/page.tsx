@@ -40,14 +40,14 @@ export default async function AssistentePage() {
     isGroqConfigured()
       ? prisma.chatMessage.findMany({
           where: { profileId: user.id },
-          orderBy: { createdAt: "asc" },
+          orderBy: [{ createdAt: "desc" }, { id: "desc" }],
           take: 100,
         })
       : Promise.resolve([]),
     getProfile(),
   ]);
 
-  const messages = history.map((message) => ({
+  const messages = history.reverse().map((message) => ({
     id: String(message.id),
     role: message.role === "USER" ? ("user" as const) : ("assistant" as const),
     content: message.content,

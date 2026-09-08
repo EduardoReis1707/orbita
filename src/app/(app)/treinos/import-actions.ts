@@ -1,5 +1,8 @@
 "use server";
 
+import { z } from "zod";
+import type { Prisma } from "@prisma/client";
+
 import { revalidatePath } from "next/cache";
 import type { WorkoutStatus } from "@prisma/client";
 
@@ -10,13 +13,30 @@ import { prisma } from "@/lib/prisma";
 import { MUSCLE_GROUPS } from "@/lib/workouts";
 import type { ImportedWorkout } from "@/lib/ai/import-workouts";
 
+const optionalText = z.string().nullish();
+const importDate = z.string().refine((value) => {
+  const date = parseISODate(value);
+  return date !== null && date.toISOString().slice(0, 10) === value;
+}, "Data inválida.").nullish();
+const numeric = (min: number, max: number) => z.number().min(min).max(max).nullish();
+const batchSchema = z.array(z.object({
+  name: optionalText, date: importDate, note: optionalText,
+  durationMin: numeric(1, 600), muscleGroups: z.array(z.string()).nullish(),
+  exercises: z.array(z.object({
+    name: optionalText, note: optionalText, sets: numeric(1, 50),
+    reps: numeric(1, 500), weightKg: numeric(0, 1000), restSec: numeric(0, 3600),
+  })).max(60).nullish(),
+})).min(1).max(50);
+
 function clampInt(value: unknown, min: number, max: number): number | null {
+  if (value == null) return null;
   const n = Number(value);
   if (!Number.isFinite(n)) return null;
   return Math.min(max, Math.max(min, Math.round(n)));
 }
 
 function clampFloat(value: unknown, min: number, max: number): number | null {
+  if (value == null) return null;
   const n = Number(value);
   if (!Number.isFinite(n)) return null;
   return Math.min(max, Math.max(min, Math.round(n * 10) / 10));
@@ -32,9 +52,15 @@ export async function confirmWorkoutImportAction(
     return { status: "error", message: "Nada para importar." };
   }
 
+  const parsed = batchSchema.safeParse(workouts);
+  if (!parsed.success) {
+    return { status: "error", message: "Lote inválido. Revise os dados e os limites da importação." };
+  }
+
+  const records: Prisma.WorkoutCreateArgs[] = [];
   let created = 0;
 
-  for (const workout of workouts.slice(0, 50)) {
+  for (const workout of parsed.data) {
     const name =
       typeof workout.name === "string" && workout.name.trim()
         ? workout.name.trim().slice(0, 120)
@@ -67,7 +93,7 @@ export async function confirmWorkoutImportAction(
         }))
       : [];
 
-    await prisma.workout.create({
+    records.push({
       data: {
         profileId: user.id,
         name,
@@ -84,6 +110,10 @@ export async function confirmWorkoutImportAction(
     });
     created += 1;
   }
+
+  await prisma.$transaction(async (tx) => {
+    for (const record of records) await tx.workout.create(record);
+  });
 
   revalidatePath("/treinos");
   revalidatePath("/painel");

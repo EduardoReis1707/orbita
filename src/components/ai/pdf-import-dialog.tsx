@@ -1,6 +1,6 @@
 "use client";
 
-import { type ChangeEvent, type ReactNode, useState, useTransition } from "react";
+import { type ChangeEvent, type ReactNode, useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { SparklesIcon, UploadIcon } from "lucide-react";
 import { toast } from "sonner";
@@ -57,7 +57,19 @@ export function PdfImportDialog<T>({
   const [rows, setRows] = useState<Row<T>[]>([]);
   const [saving, startSaving] = useTransition();
 
+  const requestRef = useRef<AbortController | null>(null);
+  const sessionRef = useRef(0);
+
+  useEffect(() => {
+    return () => {
+      requestRef.current?.abort();
+      sessionRef.current += 1;
+    };
+  }, [open]);
+
   function reset() {
+    requestRef.current?.abort();
+    sessionRef.current += 1;
     setPhase("pick");
     setError(null);
     setRows([]);
@@ -71,6 +83,10 @@ export function PdfImportDialog<T>({
   async function handleFile(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
+    requestRef.current?.abort();
+    const controller = new AbortController();
+    requestRef.current = controller;
+    event.target.value = "";
     setError(null);
     setPhase("analyzing");
 
@@ -78,8 +94,9 @@ export function PdfImportDialog<T>({
     formData.set("file", file);
 
     try {
-      const response = await fetch(endpoint, { method: "POST", body: formData });
+      const response = await fetch(endpoint, { method: "POST", body: formData, signal: controller.signal });
       const data = await response.json();
+      if (controller.signal.aborted) return;
       if (!response.ok) {
         setError(data.error ?? "Não foi possível ler o PDF.");
         setPhase("pick");
@@ -99,10 +116,11 @@ export function PdfImportDialog<T>({
       );
       setPhase("review");
     } catch {
+      if (controller.signal.aborted) return;
       setError("Falha ao enviar o arquivo.");
       setPhase("pick");
     } finally {
-      event.target.value = "";
+      if (requestRef.current === controller) requestRef.current = null;
     }
   }
 
@@ -130,27 +148,36 @@ export function PdfImportDialog<T>({
       setError("Selecione ao menos um item.");
       return;
     }
+    if (saving) return;
+    setError(null);
+    const session = sessionRef.current;
     startSaving(async () => {
-      const result = await apply(selected);
-      if (result.status === "success") {
-        toast.success(result.message ?? "Importado.");
-        close(false);
-        router.refresh();
-      } else {
-        setError(result.message ?? "Não foi possível importar.");
+      try {
+        const result = await apply(selected);
+        if (session !== sessionRef.current) return;
+        if (result.status === "success") {
+          toast.success(result.message ?? "Importado.");
+          close(false);
+          router.refresh();
+        } else {
+          setError(result.message ?? "Não foi possível importar.");
+        }
+      } catch {
+        if (session !== sessionRef.current) return;
+        setError("Não foi possível confirmar a importação. Confira seus registros antes de tentar novamente.");
       }
     });
   }
 
   return (
     <Dialog open={open} onOpenChange={close}>
-      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
+      <DialogContent className="max-h-[85dvh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
 
-        {error ? <p className="text-sm text-destructive">{error}</p> : null}
+        {error ? <p role="alert" className="text-sm text-destructive">{error}</p> : null}
 
         {phase === "pick" ? (
           <div className="space-y-2">

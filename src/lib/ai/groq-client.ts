@@ -20,5 +20,5 @@ export function createGroqClient(): Groq {
       "GROQ_API_KEY ausente. Gere uma chave gratuita em console.groq.com/keys e adicione em .env.local.",
     );
   }
-  return new Groq({ apiKey });
+  return new Groq({ apiKey, timeout: 45_000, maxRetries: 0 });
 }

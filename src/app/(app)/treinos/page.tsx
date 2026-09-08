@@ -14,8 +14,6 @@ import { WorkoutsPanel, type WorkoutCardData } from "./workouts-panel";
 
 export const metadata = { title: "Treinos" };
 
-const KEY_SEP = "|@|";
-
 export default async function TreinosPage() {
   const user = await requireUser();
 
@@ -51,39 +49,33 @@ export default async function TreinosPage() {
   });
 
   // Evolução por exercício: carga máxima por dia, por nome de exercício.
-  const exerciseRows = await prisma.exercise.findMany({
-    where: {
-      workout: { profileId: user.id, status: "COMPLETED" },
-      weightKg: { not: null },
-    },
-    select: {
-      name: true,
-      weightKg: true,
-      workout: { select: { date: true } },
-    },
-    orderBy: { workout: { date: "asc" } },
-  });
-
-  const maxByNameDate = new Map<string, number>();
-  for (const row of exerciseRows) {
-    const key = `${row.name}${KEY_SEP}${toISODate(row.workout.date)}`;
-    maxByNameDate.set(
-      key,
-      Math.max(maxByNameDate.get(key) ?? 0, row.weightKg ?? 0),
-    );
+  const maxByDateName = new Map<string, Map<string, number>>();
+  for (const workout of completed) {
+    const iso = toISODate(workout.date);
+    for (const exercise of workout.exercises) {
+      if (exercise.weightKg == null) continue;
+      let byName = maxByDateName.get(iso);
+      if (!byName) {
+        byName = new Map<string, number>();
+        maxByDateName.set(iso, byName);
+      }
+      byName.set(
+        exercise.name,
+        Math.max(byName.get(exercise.name) ?? 0, exercise.weightKg),
+      );
+    }
   }
 
-  const progressionPoints: ProgressionPoint[] = [...maxByNameDate].map(
-    ([key, weightKg]) => {
-      const [name, iso] = key.split(KEY_SEP);
-      return {
+  const progressionPoints: ProgressionPoint[] = [...maxByDateName]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .flatMap(([date, byName]) =>
+      [...byName].map(([name, weightKg]) => ({
         name,
-        date: iso,
-        label: formatDateShort(new Date(`${iso}T00:00:00.000Z`)),
+        date,
+        label: formatDateShort(new Date(`${date}T00:00:00.000Z`)),
         weightKg,
-      };
-    },
-  );
+      })),
+    );
 
   const exerciseNames = [
     ...new Set(progressionPoints.map((point) => point.name)),

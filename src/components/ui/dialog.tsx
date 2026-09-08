@@ -9,7 +9,6 @@ import { XIcon } from "lucide-react"
 
 function Dialog({ open, onOpenChange, ...props }: DialogPrimitive.Root.Props) {
   const pushedRef = React.useRef(false)
-  const consumingRef = React.useRef(false)
   const closeRef = React.useRef(onOpenChange)
 
   React.useEffect(() => {
@@ -26,10 +25,6 @@ function Dialog({ open, onOpenChange, ...props }: DialogPrimitive.Root.Props) {
     pushedRef.current = true
 
     const onPopState = () => {
-      if (consumingRef.current) {
-        consumingRef.current = false
-        return
-      }
       pushedRef.current = false
       const close = closeRef.current as ((next: boolean) => void) | undefined
       close?.(false)
@@ -45,7 +40,6 @@ function Dialog({ open, onOpenChange, ...props }: DialogPrimitive.Root.Props) {
         (window.history.state as { __appDialog?: boolean } | null)?.__appDialog
       ) {
         pushedRef.current = false
-        consumingRef.current = true
         window.history.back()
       }
     }
@@ -103,7 +97,7 @@ function DialogContent({
       <DialogPrimitive.Popup
         data-slot="dialog-content"
         className={cn(
-          "fixed top-1/2 left-1/2 z-50 grid w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 rounded-xl bg-popover p-4 text-sm text-popover-foreground ring-1 ring-foreground/10 duration-100 outline-none sm:max-w-sm data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
+          "fixed top-1/2 left-1/2 z-50 grid max-h-[85dvh] w-full overflow-y-auto max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 rounded-xl bg-popover p-4 text-sm text-popover-foreground ring-1 ring-foreground/10 duration-100 outline-none sm:max-w-sm data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
           className
         )}
         {...props}

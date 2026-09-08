@@ -104,7 +104,7 @@ export function AssistantChat({
 
   async function send(text: string, file?: File | null) {
     const trimmed = text.trim();
-    if (sending) return;
+    if (sending || clearing) return;
     if (!trimmed && !file) return;
 
     lastSendRef.current = { text: trimmed, file: file ?? null };
@@ -132,13 +132,16 @@ export function AssistantChat({
         current.map((m) => (m.id === assistantMsg.id ? patch(m) : m)),
       );
 
+    let sawDone = false;
     let sawText = false;
     let sawAction = false;
     let hadError = false;
     let errorMessage = "";
 
     const applyEvent = (event: StreamEvent) => {
-      if (event.type === "text") {
+      if (event.type === "done") {
+        sawDone = true;
+      } else if (event.type === "text") {
         sawText = true;
         patchAssistant((m) => ({ ...m, content: m.content + event.delta }));
       } else if (event.type === "action") {
@@ -205,7 +208,8 @@ export function AssistantChat({
         if (done) break;
         drain(decoder.decode(value, { stream: true }));
       }
-      drain("", true);
+      drain(decoder.decode(), true);
+      if (!sawDone) throw new Error("A conexão foi interrompida. Confira as ações já realizadas antes de tentar novamente.");
 
       if (hadError) {
         const shown = errorMessage || fallbackError;
@@ -319,7 +323,7 @@ export function AssistantChat({
             variant="ghost"
             size="xs"
             onClick={clearAll}
-            disabled={clearing}
+            disabled={clearing || sending}
           >
             <Trash2Icon />
             Limpar
@@ -350,7 +354,7 @@ export function AssistantChat({
               {message.content || sending ? (
                 <div
                   className={cn(
-                    "max-w-[85%] rounded-lg px-3 py-2 text-sm whitespace-pre-wrap",
+                    "max-w-[85%] break-words rounded-lg px-3 py-2 text-sm whitespace-pre-wrap",
                     message.role === "user"
                       ? "bg-primary text-primary-foreground"
                       : "bg-muted",
@@ -460,12 +464,14 @@ export function AssistantChat({
           }}
           onKeyDown={handleComposeKeyDown}
           rows={1}
+          aria-label="Mensagem para o assistente"
           placeholder="Escreva a sua pergunta…"
           maxLength={2000}
           disabled={sending}
           className="max-h-35 min-h-8 flex-1 resize-none rounded-lg border border-input bg-transparent px-2.5 py-1.5 text-base leading-relaxed transition-colors outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm dark:bg-input/30"
         />
         <Button
+          aria-label="Enviar mensagem"
           type="submit"
           disabled={sending || (!input.trim() && !attachedFile)}
         >

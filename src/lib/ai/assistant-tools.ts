@@ -2,7 +2,7 @@ import { revalidatePath } from "next/cache";
 import type { GoalMetric, MealType, WorkoutStatus } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
-import { formatDateBR, parseISODate, toISODate } from "@/lib/date";
+import { formatDateBR, parseISODate, toISODate, todayISO } from "@/lib/date";
 import {
   ageInYears,
   basalMetabolicRate,
@@ -386,16 +386,16 @@ const registrarTreino: AssistantTool = {
 
     // Um treino "principal" por dia via chat — registrar de novo no mesmo dia
     // substitui o anterior (mesma convenção de peso/medidas) em vez de duplicar.
-    const existingWorkout = await prisma.workout.findFirst({
+    const existingWorkout = await prisma.$transaction(async (tx) => {
+      // Serialize assistant replacements for this profile, including empty days.
+      await tx.$queryRaw`SELECT id FROM profiles WHERE id = ${ctx.profileId}::uuid FOR UPDATE`;
+      const existingWorkout = await tx.workout.findFirst({
       where: { profileId: ctx.profileId, date },
+      orderBy: { id: "asc" },
       select: { id: true },
     });
-    if (existingWorkout) {
-      await prisma.workout.delete({ where: { id: existingWorkout.id } });
-    }
 
-    await prisma.workout.create({
-      data: {
+      const data = {
         profileId: ctx.profileId,
         name,
         date,
@@ -404,7 +404,16 @@ const registrarTreino: AssistantTool = {
         muscleGroups,
         note: trimTo(args.nota, 300),
         exercises: { create: exercises },
-      },
+      };
+      if (existingWorkout) {
+        await tx.workout.update({
+          where: { id: existingWorkout.id, profileId: ctx.profileId },
+          data: { ...data, exercises: { deleteMany: {}, create: exercises } },
+        });
+      } else {
+        await tx.workout.create({ data });
+      }
+      return existingWorkout;
     });
     revalidate(["/treinos", "/painel"]);
 
@@ -484,23 +493,31 @@ const registrarRefeicao: AssistantTool = {
 
     // Uma refeição de cada tipo por dia via chat — registrar de novo o mesmo
     // tipo (ex.: café da manhã) no mesmo dia substitui em vez de duplicar.
-    const existingMeal = await prisma.meal.findFirst({
+    const existingMeal = await prisma.$transaction(async (tx) => {
+      // Serialize assistant replacements for this profile, including empty days.
+      await tx.$queryRaw`SELECT id FROM profiles WHERE id = ${ctx.profileId}::uuid FOR UPDATE`;
+      const existingMeal = await tx.meal.findFirst({
       where: { profileId: ctx.profileId, date, type },
+      orderBy: { id: "asc" },
       select: { id: true },
     });
-    if (existingMeal) {
-      await prisma.meal.delete({ where: { id: existingMeal.id } });
-    }
 
-    await prisma.meal.create({
-      data: {
-        profileId: ctx.profileId,
+      const data = {        profileId: ctx.profileId,
         date,
         type,
         time,
         note: trimTo(args.nota, 200),
         items: { create: items },
-      },
+      };
+      if (existingMeal) {
+        await tx.meal.update({
+          where: { id: existingMeal.id, profileId: ctx.profileId },
+          data: { ...data, items: { deleteMany: {}, create: items } },
+        });
+      } else {
+        await tx.meal.create({ data });
+      }
+      return existingMeal;
     });
     revalidate(["/alimentacao", "/painel"]);
 
@@ -860,8 +877,8 @@ const apagarRefeicao: AssistantTool = {
           "Não apaguei nada: informe a data da(s) refeição(ões) que quer apagar, ou confirme que é pra apagar todo o histórico.",
       };
     }
-    const type =
-      !wantsAll && typeof args.tipo === "string" ? mapMealType(args.tipo) : null;
+    const type = typeof args.tipo === 'string' ? MEAL_TYPE_BY_LABEL.get(normalize(args.tipo)) : null;
+    if (typeof args.tipo === 'string' && !type) return { ok: false, summary: 'Tipo de refeição não reconhecido; não apaguei nada.' };
     const result = await prisma.meal.deleteMany({
       where: {
         profileId: ctx.profileId,
@@ -922,19 +939,19 @@ const apagarMeta: AssistantTool = {
       };
     }
 
-    const goal = await prisma.goal.findFirst({
-      where: {
-        profileId: ctx.profileId,
-        title: { contains: titulo, mode: "insensitive" },
-      },
+    const matches = await prisma.goal.findMany({
+      where: { profileId: ctx.profileId, title: { contains: titulo, mode: "insensitive" } },
+      take: 2,
     });
+    if (matches.length > 1) return { ok: false, summary: 'Encontrei mais de uma meta com esse título. Informe um título mais específico; não apaguei nada.' };
+    const goal = matches[0];
     if (!goal) {
       return {
         ok: false,
         summary: `Não encontrei nenhuma meta com "${titulo}" no título.`,
       };
     }
-    await prisma.goal.delete({ where: { id: goal.id } });
+    await prisma.goal.delete({ where: { id: goal.id, profileId: ctx.profileId } });
     revalidate(["/metas", "/painel"]);
     return {
       ok: true,
@@ -949,12 +966,9 @@ const consultarDados: AssistantTool = {
   description:
     "Retorna um retrato atualizado dos dados do usuário: perfil, histórico recente de peso, últimos treinos, alimentação de hoje/semana e progresso das metas. Use quando precisar de números atuais para responder.",
   async execute(_args, ctx) {
-    const now = new Date();
-    const weekStart = new Date(now);
-    weekStart.setDate(now.getDate() - ((now.getDay() + 6) % 7));
-    weekStart.setHours(0, 0, 0, 0);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const today = parseISODate(todayISO())!;
+    const weekStart = new Date(today);
+    weekStart.setUTCDate(today.getUTCDate() - ((today.getUTCDay() + 6) % 7));
 
     const [profile, weights, workouts, todayMeals, weekMeals, goals, resolver] =
       await Promise.all([
@@ -1136,9 +1150,34 @@ export async function executeToolCall(
     return { ok: false, summary: `Ação desconhecida: ${name}.` };
   }
   try {
-    return await tool.execute(args ?? {}, ctx);
+    if (!args || Array.isArray(args) || typeof args !== 'object') return { ok: false, summary: 'Argumentos inválidos. Nenhum dado foi alterado.' };
+    if (tool.parameters && !validToolArguments(args, tool.parameters)) {
+      return { ok: false, summary: 'Argumentos inválidos. Confira os campos da ação; nenhum dado foi alterado.' };
+    }
+    if (['registrar_peso', 'registrar_medidas'].includes(name) && args.data != null && parseDateOrToday(args.data) > parseISODate(todayISO())!) {
+      return { ok: false, summary: 'Peso e medidas devem usar uma data até hoje.' };
+    }
+    return await tool.execute(args, ctx);
   } catch (error) {
-    console.error(`[assistant-tools:${name}]`, error);
+    console.error(`[assistant-tools:${name}]`, { name: error instanceof Error ? error.name : "UnknownError" });
     return { ok: false, summary: "Não consegui concluir essa ação agora." };
   }
+}
+
+/** Validates the declared structural contract before any database access. */
+export function validToolArguments(value: unknown, schema: Record<string, unknown>): boolean {
+  const types = Array.isArray(schema.type) ? schema.type : [schema.type];
+  if (value === null) return types.includes('null');
+  const kind = Array.isArray(value) ? 'array' : typeof value;
+  if (!types.includes(kind)) return false;
+  if (kind === 'number' && !Number.isFinite(value)) return false;
+  if (Array.isArray(schema.enum) && !schema.enum.includes(value)) return false;
+  if (kind === 'array') return (value as unknown[]).length <= 60 && (value as unknown[]).every(item => validToolArguments(item, schema.items as Record<string, unknown>));
+  if (kind === 'object') {
+    const obj = value as Record<string, unknown>;
+    const properties = schema.properties as Record<string, Record<string, unknown>>;
+    if ((schema.required as string[] ?? []).some(key => !(key in obj))) return false;
+    return Object.entries(obj).every(([key, entry]) => key in properties && validToolArguments(entry, properties[key]));
+  }
+  return true;
 }

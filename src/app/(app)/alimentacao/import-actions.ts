@@ -1,5 +1,8 @@
 "use server";
 
+import { z } from "zod";
+import type { Prisma } from "@prisma/client";
+
 import { revalidatePath } from "next/cache";
 import type { MealType } from "@prisma/client";
 
@@ -10,7 +13,23 @@ import { prisma } from "@/lib/prisma";
 import { MEAL_TYPE_ORDER } from "@/lib/nutrition";
 import type { ImportedMeal } from "@/lib/ai/import-meals";
 
+const optionalText = z.string().nullish();
+const importDate = z.string().refine((value) => {
+  const date = parseISODate(value);
+  return date !== null && date.toISOString().slice(0, 10) === value;
+}, "Data inválida.").nullish();
+const numeric = (min: number, max: number) => z.number().min(min).max(max).nullish();
+const batchSchema = z.array(z.object({
+  type: optionalText, date: importDate, note: optionalText,
+  time: z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/).nullish(),
+  items: z.array(z.object({
+    name: optionalText, quantity: optionalText, calories: numeric(0, 10000),
+    proteinG: numeric(0, 2000), carbsG: numeric(0, 2000), fatG: numeric(0, 2000),
+  })).max(40).nullish(),
+})).min(1).max(60);
+
 function num(value: unknown, min: number, max: number): number | null {
+  if (value == null) return null;
   const n = Number(value);
   if (!Number.isFinite(n) || n < min || n > max) return null;
   return Math.round(n * 10) / 10;
@@ -24,9 +43,15 @@ export async function confirmMealImportAction(
     return { status: "error", message: "Nada para importar." };
   }
 
+  const parsed = batchSchema.safeParse(meals);
+  if (!parsed.success) {
+    return { status: "error", message: "Lote inválido. Revise os dados e os limites da importação." };
+  }
+
+  const records: Prisma.MealCreateArgs[] = [];
   let created = 0;
 
-  for (const meal of meals.slice(0, 60)) {
+  for (const meal of parsed.data) {
     const type = (
       MEAL_TYPE_ORDER.includes(meal.type as MealType) ? meal.type : "OTHER"
     ) as MealType;
@@ -56,7 +81,7 @@ export async function confirmMealImportAction(
 
     if (items.length === 0) continue;
 
-    await prisma.meal.create({
+    records.push({
       data: {
         profileId: user.id,
         date,
@@ -71,6 +96,10 @@ export async function confirmMealImportAction(
     });
     created += 1;
   }
+
+  await prisma.$transaction(async (tx) => {
+    for (const record of records) await tx.meal.create(record);
+  });
 
   revalidatePath("/alimentacao");
   revalidatePath("/painel");

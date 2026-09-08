@@ -14,7 +14,7 @@ import {
 } from "@/lib/profile";
 import { computeGoalProgress, GOAL_METRIC_LABELS } from "@/lib/goals";
 import { buildGoalLiveValueResolver } from "@/lib/goal-live-value";
-import { todayISO } from "@/lib/date";
+import { todayISO, parseISODate } from "@/lib/date";
 
 export const ASSISTANT_SYSTEM_PROMPT = `Você é o assistente do "Auxiliar de Treino" — pense em si mesmo como um amigo que entende de treino e nutrição e está na torcida pela pessoa, não um sistema respondendo chamados.
 
@@ -56,12 +56,9 @@ Regras:
 export async function buildAssistantContext(
   profileId: string,
 ): Promise<string> {
-  const now = new Date();
-  const weekStart = new Date(now);
-  weekStart.setDate(now.getDate() - ((now.getDay() + 6) % 7));
-  weekStart.setHours(0, 0, 0, 0);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const today = parseISODate(todayISO())!;
+  const weekStart = new Date(today);
+  weekStart.setUTCDate(today.getUTCDate() - ((today.getUTCDay() + 6) % 7));
 
   const [profile, firstWeight, lastWeight, weekWorkouts, todayMeals, goals, resolver] =
     await Promise.all([

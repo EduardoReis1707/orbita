@@ -3,6 +3,8 @@
 import {
   type ChangeEvent,
   type ReactNode,
+  useEffect,
+  useRef,
   useState,
   useTransition,
 } from "react";
@@ -61,7 +63,19 @@ export function PhotoEstimateDialog<T>({
   const [value, setValue] = useState<T | null>(null);
   const [saving, startSaving] = useTransition();
 
+  const requestRef = useRef<AbortController | null>(null);
+  const sessionRef = useRef(0);
+
+  useEffect(() => {
+    return () => {
+      requestRef.current?.abort();
+      sessionRef.current += 1;
+    };
+  }, [open]);
+
   function reset() {
+    requestRef.current?.abort();
+    sessionRef.current += 1;
     setPhase("pick");
     setError(null);
     setValue(null);
@@ -75,6 +89,10 @@ export function PhotoEstimateDialog<T>({
   async function handleFiles(event: ChangeEvent<HTMLInputElement>) {
     const files = Array.from(event.target.files ?? []);
     if (files.length === 0) return;
+    requestRef.current?.abort();
+    const controller = new AbortController();
+    requestRef.current = controller;
+    event.target.value = "";
     setError(null);
     setPhase("analyzing");
 
@@ -82,8 +100,9 @@ export function PhotoEstimateDialog<T>({
     for (const file of files.slice(0, 3)) formData.append("files", file);
 
     try {
-      const response = await fetch(endpoint, { method: "POST", body: formData });
+      const response = await fetch(endpoint, { method: "POST", body: formData, signal: controller.signal });
       const data = await response.json();
+      if (controller.signal.aborted) return;
       if (!response.ok) {
         setError(data.error ?? "Não foi possível analisar a foto.");
         setPhase("pick");
@@ -92,10 +111,11 @@ export function PhotoEstimateDialog<T>({
       setValue(normalize ? normalize(data) : (data as T));
       setPhase("review");
     } catch {
+      if (controller.signal.aborted) return;
       setError("Falha ao enviar a foto.");
       setPhase("pick");
     } finally {
-      event.target.value = "";
+      if (requestRef.current === controller) requestRef.current = null;
     }
   }
 
@@ -105,27 +125,36 @@ export function PhotoEstimateDialog<T>({
 
   function confirm() {
     if (!value) return;
+    if (saving) return;
+    setError(null);
+    const session = sessionRef.current;
     startSaving(async () => {
-      const result = await apply(value);
-      if (result.status === "success") {
-        toast.success(result.message ?? "Salvo.");
-        close(false);
-        router.refresh();
-      } else {
-        setError(result.message ?? "Não foi possível salvar.");
+      try {
+        const result = await apply(value);
+        if (session !== sessionRef.current) return;
+        if (result.status === "success") {
+          toast.success(result.message ?? "Salvo.");
+          close(false);
+          router.refresh();
+        } else {
+          setError(result.message ?? "Não foi possível salvar.");
+        }
+      } catch {
+        if (session !== sessionRef.current) return;
+        setError("Não foi possível confirmar o salvamento. Confira seus registros antes de tentar novamente.");
       }
     });
   }
 
   return (
     <Dialog open={open} onOpenChange={close}>
-      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-md">
+      <DialogContent className="max-h-[85dvh] overflow-y-auto sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
 
-        {error ? <p className="text-sm text-destructive">{error}</p> : null}
+        {error ? <p role="alert" className="text-sm text-destructive">{error}</p> : null}
 
         {phase === "pick" ? (
           <div className="space-y-2">

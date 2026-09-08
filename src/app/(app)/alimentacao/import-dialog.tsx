@@ -48,7 +48,7 @@ export function ImportMealsDialog({
               onValueChange={(value) => patch({ type: value ?? "OTHER" })}
               items={MEAL_TYPE_LABELS}
             >
-              <SelectTrigger className="h-8 w-full">
+              <SelectTrigger aria-label="Tipo de refeição" className="h-8 w-full">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -61,6 +61,7 @@ export function ImportMealsDialog({
             </Select>
             <Input
               type="date"
+              aria-label="Data da refeição"
               value={meal.date ?? todayISO()}
               onChange={(e) => patch({ date: e.target.value })}
               className="h-8 w-auto"

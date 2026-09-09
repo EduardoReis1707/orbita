@@ -78,6 +78,13 @@ enum ImportKind {
   MEASUREMENTS
 }
 
+/// Plano de acesso. A cobrança futura troca este campo após a confirmação do
+/// pagamento; o servidor usa o plano para aplicar as cotas de recursos.
+enum SubscriptionPlan {
+  FREE
+  PRO
+}
+
 /// Perfil do usuário. O `id` é igual ao id do usuário no Supabase Auth
 /// (auth.users.id). Cada conta tem no máximo um perfil.
 model Profile {
@@ -93,6 +100,7 @@ model Profile {
   targetProteinG Int?           @map("target_protein_g")
   targetCarbsG   Int?           @map("target_carbs_g")
   targetFatG     Int?           @map("target_fat_g")
+  subscriptionPlan SubscriptionPlan @default(FREE) @map("subscription_plan")
   onboardedAt    DateTime?      @map("onboarded_at") @db.Timestamptz(6)
   createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt      DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -314,6 +322,7 @@ model AiUsageWindow {
   windowStartedAt    DateTime @map("window_started_at") @db.Timestamptz(6)
   textRequests       Int      @default(0) @map("text_requests")
   attachmentRequests Int      @default(0) @map("attachment_requests")
+  pdfExports         Int      @default(0) @map("pdf_exports")
   createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)

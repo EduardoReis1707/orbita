@@ -5,6 +5,7 @@ import {
   type FormEvent,
   type KeyboardEvent,
   type ReactNode,
+  useCallback,
   useEffect,
   useRef,
   useState,
@@ -14,6 +15,9 @@ import { useRouter } from "next/navigation";
 import {
   AlertCircleIcon,
   CheckCircle2Icon,
+  Clock3Icon,
+  FileTextIcon,
+  MessageCircleIcon,
   PaperclipIcon,
   RotateCcwIcon,
   SendIcon,
@@ -42,8 +46,24 @@ type StreamEvent =
   | { type: "error"; message: string }
   | { type: "done" };
 
+type UsageStatus = {
+  plan: "FREE" | "PRO";
+  planLabel: string;
+  resetsAt: string;
+  text: { used: number; limit: number };
+  attachment: { used: number; limit: number };
+  pdf: { used: number; limit: number };
+};
+
 /** Mesmo teto do servidor (`src/lib/ai/attachment-extract.ts`) — feedback já no cliente. */
 const MAX_ATTACHMENT_BYTES = 4 * 1024 * 1024;
+
+function formatResetTime(resetsAt: string, now: number): string {
+  const seconds = Math.max(0, Math.ceil((new Date(resetsAt).getTime() - now) / 1000));
+  if (seconds <= 0) return "atualizando";
+  const minutes = Math.ceil(seconds / 60);
+  return minutes === 1 ? "em 1 min" : `em ${minutes} min`;
+}
 
 /**
  * Interpreta só o `**negrito**` que o modelo usa nas respostas — sem trazer
@@ -91,6 +111,8 @@ export function AssistantChat({
   const [sending, setSending] = useState(false);
   /** Última falha do envio anterior — habilita o botão "Tentar de novo". */
   const [retryError, setRetryError] = useState<string | null>(null);
+  const [usage, setUsage] = useState<UsageStatus | null>(null);
+  const [now, setNow] = useState(() => Date.now());
   const [clearing, startClearing] = useTransition();
   const bottomRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -98,9 +120,27 @@ export function AssistantChat({
   /** O que foi enviado por último, pra reenviar igual no "Tentar de novo". */
   const lastSendRef = useRef<{ text: string; file: File | null } | null>(null);
 
+  const refreshUsage = useCallback(async () => {
+    try {
+      const response = await fetch("/api/ai/uso", { cache: "no-store" });
+      if (response.ok) setUsage((await response.json()) as UsageStatus);
+    } catch {
+      // O guia é complementar: uma falha nele não deve bloquear o chat.
+    }
+  }, []);
+
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [messages]);
+
+  useEffect(() => {
+    const initialLoad = window.setTimeout(() => void refreshUsage(), 0);
+    const interval = window.setInterval(() => setNow(Date.now()), 15_000);
+    return () => {
+      window.clearTimeout(initialLoad);
+      window.clearInterval(interval);
+    };
+  }, [refreshUsage]);
 
   async function send(text: string, file?: File | null) {
     const trimmed = text.trim();
@@ -246,6 +286,7 @@ export function AssistantChat({
       });
     } finally {
       setSending(false);
+      void refreshUsage();
     }
   }
 
@@ -330,6 +371,38 @@ export function AssistantChat({
           </Button>
         ) : null}
       </div>
+
+      {usage ? (
+        <div
+          className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border bg-muted/40 px-3 py-2 text-xs text-muted-foreground"
+          role="status"
+        >
+          <span className="font-medium text-foreground">
+            Plano {usage.planLabel}
+          </span>
+          <span className="inline-flex items-center gap-1">
+            <MessageCircleIcon className="size-3.5" />
+            {usage.text.used}/{usage.text.limit} mensagens
+          </span>
+          <span className="inline-flex items-center gap-1">
+            <PaperclipIcon className="size-3.5" />
+            {usage.attachment.used}/{usage.attachment.limit} arquivos
+          </span>
+          <span className="inline-flex items-center gap-1">
+            <FileTextIcon className="size-3.5" />
+            {usage.pdf.used}/{usage.pdf.limit} PDFs
+          </span>
+          <span className="inline-flex items-center gap-1">
+            <Clock3Icon className="size-3.5" />
+            reinicia {formatResetTime(usage.resetsAt, now)}
+          </span>
+          {usage.plan === "FREE" ? (
+            <span className="w-full text-[0.7rem]">
+              O plano Pro libera mais mensagens, arquivos e PDFs por janela.
+            </span>
+          ) : null}
+        </div>
+      ) : null}
 
       <div className="flex-1 space-y-3 overflow-y-auto rounded-lg border bg-card p-3">
         {messages.map((message) => (

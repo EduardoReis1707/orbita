@@ -1,4 +1,5 @@
-import { PDFParse } from "pdf-parse";
+import { createRequire } from "node:module";
+import type { PDFParse as PdfParseConstructor } from "pdf-parse";
 import * as XLSX from "xlsx";
 
 /**
@@ -17,6 +18,17 @@ export const MAX_ATTACHMENT_BYTES = 4 * 1024 * 1024;
 /** Teto de texto extraído enviado pro modelo — protege a cota grátis da Groq. */
 const MAX_EXTRACTED_CHARS = 12_000;
 
+// O pacote oferece uma implementação CommonJS própria para Node, que instala
+// os polyfills de canvas usados pelo pdf.js. Importá-lo em ESM faz a Vercel
+// escolher a versão de navegador e derruba até mensagens sem anexo porque
+// DOMMatrix não existe no runtime do servidor. Mantemos o require preguiçoso:
+// o pacote só é avaliado quando há de fato um PDF para ler.
+const nodeRequire = createRequire(process.cwd() + "/package.json");
+
+function loadPdfParse(): typeof PdfParseConstructor {
+  return (nodeRequire("pdf-parse") as { PDFParse: typeof PdfParseConstructor }).PDFParse;
+}
+
 export type AttachmentExtractResult =
   | { ok: true; text: string; truncated: boolean }
   | { ok: false; error: string };
@@ -33,6 +45,7 @@ function truncate(text: string): { text: string; truncated: boolean } {
 }
 
 async function extractPdf(buffer: Buffer): Promise<AttachmentExtractResult> {
+  const PDFParse = loadPdfParse();
   const parser = new PDFParse({ data: buffer });
   try {
     const info = await parser.getInfo();

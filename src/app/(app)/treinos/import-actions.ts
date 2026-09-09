@@ -11,6 +11,11 @@ import type { FormState } from "@/lib/forms";
 import { prisma } from "@/lib/prisma";
 import { MUSCLE_GROUPS } from "@/lib/workouts";
 import type { ImportedWorkout } from "@/lib/ai/import-workouts";
+import {
+  importPayloadHash,
+  sameImportPayload,
+  validImportRequestId,
+} from "@/lib/import-idempotency";
 
 const optionalText = z.string().nullish();
 const importDate = z.string().refine((value) => {
@@ -47,6 +52,7 @@ function clampFloat(value: unknown, min: number, max: number): number | null {
 /** Cria os treinos revisados pelo usuário a partir da importação por IA. */
 export async function confirmWorkoutImportAction(
   workouts: ImportedWorkout[],
+  requestId: string,
 ): Promise<FormState> {
   const user = await requireUser();
   const today = parseISODate(todayISO())!;
@@ -58,6 +64,20 @@ export async function confirmWorkoutImportAction(
   const parsed = batchSchema.safeParse(workouts);
   if (!parsed.success) {
     return { status: "error", message: "Lote inválido. Revise os dados e os limites da importação." };
+  }
+  if (!validImportRequestId(requestId)) {
+    return { status: "error", message: "Confirmação de importação inválida. Tente novamente." };
+  }
+
+  const payloadHash = importPayloadHash(parsed.data);
+  const existing = await prisma.importOperation.findUnique({
+    where: { profileId_kind_requestId: { profileId: user.id, kind: "WORKOUTS", requestId } },
+    select: { payloadHash: true, resultMessage: true },
+  });
+  if (existing) {
+    return sameImportPayload(existing, payloadHash)
+      ? { status: "success", message: existing.resultMessage }
+      : { status: "error", message: "Esta confirmação já foi usada com dados diferentes. Revise o PDF e tente de novo." };
   }
 
   const records: Prisma.WorkoutCreateArgs[] = [];
@@ -114,14 +134,30 @@ export async function confirmWorkoutImportAction(
     created += 1;
   }
 
-  await prisma.$transaction(async (tx) => {
-    for (const record of records) await tx.workout.create(record);
-  });
+  const message = `${created} treino${created === 1 ? "" : "s"} importado${created === 1 ? "" : "s"}.`;
+  try {
+    await prisma.$transaction(async (tx) => {
+      await tx.importOperation.create({
+        data: { profileId: user.id, kind: "WORKOUTS", requestId, payloadHash, resultMessage: message },
+      });
+      for (const record of records) await tx.workout.create(record);
+    });
+  } catch (error) {
+    if ((error as { code?: string } | undefined)?.code !== "P2002") throw error;
+    const replay = await prisma.importOperation.findUnique({
+      where: { profileId_kind_requestId: { profileId: user.id, kind: "WORKOUTS", requestId } },
+      select: { payloadHash: true, resultMessage: true },
+    });
+    if (!replay) throw error;
+    return sameImportPayload(replay, payloadHash)
+      ? { status: "success", message: replay.resultMessage }
+      : { status: "error", message: "Esta confirmação já foi usada com dados diferentes. Revise o PDF e tente de novo." };
+  }
 
   revalidatePath("/treinos");
   revalidatePath("/painel");
   return {
     status: "success",
-    message: `${created} treino${created === 1 ? "" : "s"} importado${created === 1 ? "" : "s"}.`,
+    message,
   };
 }

@@ -24,9 +24,16 @@ const cases = [
   ['medidas', 'confirmMeasurementImportAction', { date: '2026-09-07', weightKg: 70, waistCm: 80 }],
 ];
 function setup(domain, name, failAt = Infinity) {
-  const committed = [], invalidated = [];
+  const committed = [], invalidated = [], importOperations = new Map();
   let calls = 0, transactions = 0;
-  const prisma = { async $transaction(callback) {
+  const prisma = {
+    importOperation: {
+      async findUnique({ where }) {
+        const key = [where.profileId_kind_requestId.profileId, where.profileId_kind_requestId.kind, where.profileId_kind_requestId.requestId].join(':');
+        return importOperations.get(key) ?? null;
+      },
+    },
+    async $transaction(callback) {
     transactions++;
     const pending = [];
     const write = async (args) => {
@@ -34,17 +41,28 @@ function setup(domain, name, failAt = Infinity) {
       pending.push(args);
       return {};
     };
-    await callback({ workout: { create: write }, meal: { create: write },
+    await callback({ importOperation: { create: write }, workout: { create: write }, meal: { create: write },
       weightEntry: { upsert: write }, measurementEntry: { upsert: write } });
     committed.push(...pending);
+    for (const entry of pending) {
+      if (!entry.data?.requestId) continue;
+      const key = [entry.data.profileId, entry.data.kind, entry.data.requestId].join(':');
+      importOperations.set(key, entry.data);
+    }
   }};
-  const action = load('src/app/(app)/' + domain + '/import-actions.ts', {
+  const serverAction = load('src/app/(app)/' + domain + '/import-actions.ts', {
     '@/lib/prisma': { prisma }, '@/lib/auth': { requireUser: async () => ({ id: 'synthetic-user' }) },
     'next/cache': { revalidatePath: (p) => invalidated.push(p) },
     '@/lib/date': load('src/lib/date.ts', {}),
     '@/lib/workouts': { MUSCLE_GROUPS: [] }, '@/lib/nutrition': { MEAL_TYPE_ORDER: ['OTHER'] },
+    '@/lib/import-idempotency': {
+      validImportRequestId: (value) => typeof value === 'string' && value.length > 10,
+      importPayloadHash: (value) => JSON.stringify(value),
+      sameImportPayload: (operation, hash) => operation.payloadHash === hash,
+    },
   })[name];
-  return { action, committed, invalidated, transactions: () => transactions };
+  const requestId = '123e4567-e89b-42d3-a456-426614174000';
+  return { action: (items) => serverAction(items, requestId), committed, invalidated, transactions: () => transactions };
 }
 for (const [domain, name, valid] of cases) {
   test(domain + ': validates entire batch before transaction', async () => {
@@ -74,7 +92,7 @@ test('workout and meal nulls remain null; zero remains zero', async () => {
   for (const [domain, name, valid] of cases.slice(0, 2)) {
     const h = setup(domain, name);
     await h.action([valid]);
-    const data = h.committed[0].data;
+    const data = h.committed.find((entry) => entry.data.exercises || entry.data.items).data;
     if (domain === 'treinos') {
       assert.equal(data.durationMin, null);
       assert.equal(data.status, 'PLANNED');
@@ -89,9 +107,10 @@ test('workout and meal nulls remain null; zero remains zero', async () => {
 test('measurement patch preserves omitted and null fields', async () => {
   const h = setup('medidas', cases[2][1]);
   await h.action([{ date: '2026-09-07', waistCm: 85, neckCm: null }]);
-  assert.deepEqual(h.committed[0].update, { waistCm: 85 });
+  const measurement = h.committed.find((entry) => entry.update);
+  assert.deepEqual(measurement.update, { waistCm: 85 });
   const existing = { neckCm: 40, chestCm: 100, waistCm: 90 };
-  assert.deepEqual({ ...existing, ...h.committed[0].update }, { neckCm: 40, chestCm: 100, waistCm: 85 });
+  assert.deepEqual({ ...existing, ...measurement.update }, { neckCm: 40, chestCm: 100, waistCm: 85 });
 });
 test('invalid nested objects, numeric types and oversized batches are rejected', async () => {
   for (const [domain, name, valid] of cases) {
@@ -117,7 +136,7 @@ test('workout import preserves mixed reviewed statuses and defaults missing stat
   ]);
   assert.equal(result.status, 'success');
   assert.equal(h.transactions(), 1);
-  assert.deepEqual(h.committed.map(record => record.data.status), ['COMPLETED', 'PLANNED', 'PLANNED']);
+  assert.deepEqual(h.committed.filter(record => record.data.status).map(record => record.data.status), ['COMPLETED', 'PLANNED', 'PLANNED']);
 });
 
 test('workout import rejects skipped and invalid statuses before any write', async () => {
@@ -127,5 +146,16 @@ test('workout import rejects skipped and invalid statuses before any write', asy
     assert.equal((await h.action([valid, { ...valid, status }])).status, 'error');
     assert.equal(h.transactions(), 0);
     assert.equal(h.committed.length, 0);
+  }
+});
+
+test('a repeated confirmation reuses the saved result without a second transaction', async () => {
+  for (const [domain, name, valid] of cases) {
+    const h = setup(domain, name);
+    const first = await h.action([valid]);
+    const second = await h.action([valid]);
+    assert.equal(first.status, 'success');
+    assert.deepEqual(second, first);
+    assert.equal(h.transactions(), 1);
   }
 });

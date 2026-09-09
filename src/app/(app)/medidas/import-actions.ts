@@ -10,6 +10,11 @@ import { parseISODate, todayISO } from "@/lib/date";
 import type { FormState } from "@/lib/forms";
 import { prisma } from "@/lib/prisma";
 import type { ImportedMeasurement } from "@/lib/ai/import-measurements";
+import {
+  importPayloadHash,
+  sameImportPayload,
+  validImportRequestId,
+} from "@/lib/import-idempotency";
 
 const importDate = z.string().refine((value) => {
   const date = parseISODate(value);
@@ -32,6 +37,7 @@ function num(value: unknown, min: number, max: number): number | null {
 
 export async function confirmMeasurementImportAction(
   entries: ImportedMeasurement[],
+  requestId: string,
 ): Promise<FormState> {
   const user = await requireUser();
   const today = parseISODate(todayISO())!;
@@ -42,6 +48,20 @@ export async function confirmMeasurementImportAction(
   const parsed = batchSchema.safeParse(entries);
   if (!parsed.success) {
     return { status: "error", message: "Lote inválido. Revise os dados e os limites da importação." };
+  }
+  if (!validImportRequestId(requestId)) {
+    return { status: "error", message: "Confirmação de importação inválida. Tente novamente." };
+  }
+
+  const payloadHash = importPayloadHash(parsed.data);
+  const existing = await prisma.importOperation.findUnique({
+    where: { profileId_kind_requestId: { profileId: user.id, kind: "MEASUREMENTS", requestId } },
+    select: { payloadHash: true, resultMessage: true },
+  });
+  if (existing) {
+    return sameImportPayload(existing, payloadHash)
+      ? { status: "success", message: existing.resultMessage }
+      : { status: "error", message: "Esta confirmação já foi usada com dados diferentes. Revise o PDF e tente de novo." };
   }
 
   const operations: Array<{ weight?: Prisma.WeightEntryUpsertArgs; measurement?: Prisma.MeasurementEntryUpsertArgs }> = [];
@@ -88,18 +108,38 @@ export async function confirmMeasurementImportAction(
     operations.push(operation);
   }
 
-  await prisma.$transaction(async (tx) => {
-    for (const operation of operations) {
-      if (operation.weight) await tx.weightEntry.upsert(operation.weight);
-      if (operation.measurement) await tx.measurementEntry.upsert(operation.measurement);
-    }
-  });
+  if (weightCount === 0 && measurementCount === 0) {
+    return { status: "error", message: "Nenhuma medida válida foi selecionada para importar." };
+  }
+
+  const message = `Importado: ${weightCount} pesagem${weightCount === 1 ? "" : "ns"}, ${measurementCount} registro${measurementCount === 1 ? "" : "s"} de medidas.`;
+  try {
+    await prisma.$transaction(async (tx) => {
+      await tx.importOperation.create({
+        data: { profileId: user.id, kind: "MEASUREMENTS", requestId, payloadHash, resultMessage: message },
+      });
+      for (const operation of operations) {
+        if (operation.weight) await tx.weightEntry.upsert(operation.weight);
+        if (operation.measurement) await tx.measurementEntry.upsert(operation.measurement);
+      }
+    });
+  } catch (error) {
+    if ((error as { code?: string } | undefined)?.code !== "P2002") throw error;
+    const replay = await prisma.importOperation.findUnique({
+      where: { profileId_kind_requestId: { profileId: user.id, kind: "MEASUREMENTS", requestId } },
+      select: { payloadHash: true, resultMessage: true },
+    });
+    if (!replay) throw error;
+    return sameImportPayload(replay, payloadHash)
+      ? { status: "success", message: replay.resultMessage }
+      : { status: "error", message: "Esta confirmação já foi usada com dados diferentes. Revise o PDF e tente de novo." };
+  }
 
   revalidatePath("/medidas");
   revalidatePath("/evolucao");
   revalidatePath("/painel");
   return {
     status: "success",
-    message: `Importado: ${weightCount} pesagem${weightCount === 1 ? "" : "ns"}, ${measurementCount} registro${measurementCount === 1 ? "" : "s"} de medidas.`,
+    message,
   };
 }

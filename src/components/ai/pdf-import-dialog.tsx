@@ -36,7 +36,7 @@ type Props<T> = {
   /** Renderiza o cartão de revisão de um item; `patch` altera o item. */
   renderCard: (item: T, patch: (changes: Partial<T>) => void) => ReactNode;
   /** Server Action que grava os itens selecionados. */
-  apply: (items: T[]) => Promise<FormState>;
+  apply: (items: T[], requestId: string) => Promise<FormState>;
 };
 
 export function PdfImportDialog<T>({
@@ -55,6 +55,7 @@ export function PdfImportDialog<T>({
   const [phase, setPhase] = useState<Phase>("pick");
   const [error, setError] = useState<string | null>(null);
   const [rows, setRows] = useState<Row<T>[]>([]);
+  const [importRequestId, setImportRequestId] = useState<string | null>(null);
   const [saving, startSaving] = useTransition();
 
   const requestRef = useRef<AbortController | null>(null);
@@ -73,6 +74,7 @@ export function PdfImportDialog<T>({
     setPhase("pick");
     setError(null);
     setRows([]);
+    setImportRequestId(null);
   }
 
   function close(next: boolean) {
@@ -153,7 +155,9 @@ export function PdfImportDialog<T>({
     const session = sessionRef.current;
     startSaving(async () => {
       try {
-        const result = await apply(selected);
+        const requestId = importRequestId ?? crypto.randomUUID();
+        if (!importRequestId) setImportRequestId(requestId);
+        const result = await apply(selected, requestId);
         if (session !== sessionRef.current) return;
         if (result.status === "success") {
           toast.success(result.message ?? "Importado.");

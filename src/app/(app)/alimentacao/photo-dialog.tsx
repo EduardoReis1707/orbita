@@ -53,7 +53,7 @@ export function MealPhotoDialog({
         ...(raw as MealPhotoEstimate),
         date: todayISO(),
       })}
-      apply={(value) =>
+      apply={(value, requestId) =>
         confirmMealImportAction([
           {
             type: value.mealType,
@@ -69,7 +69,7 @@ export function MealPhotoDialog({
               fatG: food.fatG,
             })),
           },
-        ])
+        ], requestId)
       }
       renderReview={(value, patch) => {
         function patchFood(index: number, changes: Partial<EstimatedFood>) {

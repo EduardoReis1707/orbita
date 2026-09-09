@@ -41,7 +41,7 @@ type Props<T> = {
   /** Ajusta o objeto recém-recebido da API (ex.: injetar a data de hoje). */
   normalize?: (raw: unknown) => T;
   renderReview: (value: T, patch: (changes: Partial<T>) => void) => ReactNode;
-  apply: (value: T) => Promise<FormState>;
+  apply: (value: T, requestId: string) => Promise<FormState>;
 };
 
 export function PhotoEstimateDialog<T>({
@@ -61,6 +61,7 @@ export function PhotoEstimateDialog<T>({
   const [phase, setPhase] = useState<Phase>("pick");
   const [error, setError] = useState<string | null>(null);
   const [value, setValue] = useState<T | null>(null);
+  const [importRequestId, setImportRequestId] = useState<string | null>(null);
   const [saving, startSaving] = useTransition();
 
   const requestRef = useRef<AbortController | null>(null);
@@ -79,6 +80,7 @@ export function PhotoEstimateDialog<T>({
     setPhase("pick");
     setError(null);
     setValue(null);
+    setImportRequestId(null);
   }
 
   function close(next: boolean) {
@@ -130,7 +132,9 @@ export function PhotoEstimateDialog<T>({
     const session = sessionRef.current;
     startSaving(async () => {
       try {
-        const result = await apply(value);
+        const requestId = importRequestId ?? crypto.randomUUID();
+        if (!importRequestId) setImportRequestId(requestId);
+        const result = await apply(value, requestId);
         if (session !== sessionRef.current) return;
         if (result.status === "success") {
           toast.success(result.message ?? "Salvo.");

@@ -16,6 +16,9 @@ function fixture(options = {}) {
   const route = loadTs('src/app/api/chat/route.ts', {
     'groq-sdk': { APIError, BadRequestError, APIConnectionError },
     '@/lib/auth': { requireUser: async () => ({ id: 'owner-a' }) },
+    '@/lib/ai/rate-limit': {
+      takeAiRequestSlot: options.takeAiRequestSlot ?? (async () => ({ allowed: true, retryAfterSeconds: 1 })),
+    },
     '@/lib/prisma': { prisma: {
       chatMessage: {
         findMany: async query => { historyQuery = query; return [...(options.history || [])]; },
@@ -64,6 +67,16 @@ function attachmentRequest() {
 async function events(response) {
   return (await response.text()).trim().split('\n').filter(Boolean).map(line => JSON.parse(line));
 }
+
+test('chat: local rate limit returns 429 before persistence or provider call', async () => {
+  const f = fixture({ takeAiRequestSlot: async () => ({ allowed: false, retryAfterSeconds: 75 }) });
+  const response = await f.POST(jsonRequest({ message: 'Oi' }));
+  assert.equal(response.status, 429);
+  assert.equal(response.headers.get('retry-after'), '75');
+  assert.match((await response.json()).error, /muitas mensagens/);
+  assert.deepEqual(f.writes, []);
+  assert.deepEqual(f.calls, []);
+});
 
 test('chat: JSON null retorna 400 sem histórico ou provedor', async () => {
   const f = fixture();

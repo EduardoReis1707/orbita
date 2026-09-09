@@ -3,6 +3,7 @@ import Groq from "groq-sdk";
 
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { takeAiRequestSlot } from "@/lib/ai/rate-limit";
 import { GROQ_MODEL, createGroqClient, isGroqConfigured } from "@/lib/ai/groq-client";
 import {
   ASSISTANT_SYSTEM_PROMPT,
@@ -141,6 +142,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const rateLimit = await takeAiRequestSlot(user.id, "attachment");
+    if (!rateLimit.allowed) {
+      return Response.json(
+        { error: `Você enviou muitos arquivos agora. Espere cerca de ${Math.ceil(rateLimit.retryAfterSeconds / 60)} min e tente novamente.` },
+        { status: 429, headers: { "Retry-After": String(rateLimit.retryAfterSeconds) } },
+      );
+    }
+
     const buffer = Buffer.from(await file.arrayBuffer());
     const extracted = await extractAttachmentText(buffer, file.name, file.type).catch(() => ({ ok: false as const, error: 'Não consegui ler esse arquivo. Confira o formato e tente novamente.' }));
     attachmentOnly = true;
@@ -173,6 +182,14 @@ export async function POST(request: NextRequest) {
     }
     promptForModel = message;
     persistedMessage = message;
+
+    const rateLimit = await takeAiRequestSlot(user.id, "text");
+    if (!rateLimit.allowed) {
+      return Response.json(
+        { error: `Você enviou muitas mensagens agora. Espere cerca de ${Math.ceil(rateLimit.retryAfterSeconds / 60)} min e tente novamente.` },
+        { status: 429, headers: { "Retry-After": String(rateLimit.retryAfterSeconds) } },
+      );
+    }
   }
 
   checkActive();

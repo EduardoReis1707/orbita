@@ -12,6 +12,11 @@ import type { FormState } from "@/lib/forms";
 import { prisma } from "@/lib/prisma";
 import { MEAL_TYPE_ORDER } from "@/lib/nutrition";
 import type { ImportedMeal } from "@/lib/ai/import-meals";
+import {
+  importPayloadHash,
+  sameImportPayload,
+  validImportRequestId,
+} from "@/lib/import-idempotency";
 
 const optionalText = z.string().nullish();
 const importDate = z.string().refine((value) => {
@@ -37,6 +42,7 @@ function num(value: unknown, min: number, max: number): number | null {
 
 export async function confirmMealImportAction(
   meals: ImportedMeal[],
+  requestId: string,
 ): Promise<FormState> {
   const user = await requireUser();
   const today = parseISODate(todayISO())!;
@@ -47,6 +53,20 @@ export async function confirmMealImportAction(
   const parsed = batchSchema.safeParse(meals);
   if (!parsed.success) {
     return { status: "error", message: "Lote inválido. Revise os dados e os limites da importação." };
+  }
+  if (!validImportRequestId(requestId)) {
+    return { status: "error", message: "Confirmação de importação inválida. Tente novamente." };
+  }
+
+  const payloadHash = importPayloadHash(parsed.data);
+  const existing = await prisma.importOperation.findUnique({
+    where: { profileId_kind_requestId: { profileId: user.id, kind: "MEALS", requestId } },
+    select: { payloadHash: true, resultMessage: true },
+  });
+  if (existing) {
+    return sameImportPayload(existing, payloadHash)
+      ? { status: "success", message: existing.resultMessage }
+      : { status: "error", message: "Esta confirmação já foi usada com dados diferentes. Revise o PDF e tente de novo." };
   }
 
   const records: Prisma.MealCreateArgs[] = [];
@@ -98,14 +118,34 @@ export async function confirmMealImportAction(
     created += 1;
   }
 
-  await prisma.$transaction(async (tx) => {
-    for (const record of records) await tx.meal.create(record);
-  });
+  if (records.length === 0) {
+    return { status: "error", message: "Nenhuma refeição válida foi selecionada para importar." };
+  }
+
+  const message = `${created} refeição${created === 1 ? "" : "s"} importada${created === 1 ? "" : "s"}.`;
+  try {
+    await prisma.$transaction(async (tx) => {
+      await tx.importOperation.create({
+        data: { profileId: user.id, kind: "MEALS", requestId, payloadHash, resultMessage: message },
+      });
+      for (const record of records) await tx.meal.create(record);
+    });
+  } catch (error) {
+    if ((error as { code?: string } | undefined)?.code !== "P2002") throw error;
+    const replay = await prisma.importOperation.findUnique({
+      where: { profileId_kind_requestId: { profileId: user.id, kind: "MEALS", requestId } },
+      select: { payloadHash: true, resultMessage: true },
+    });
+    if (!replay) throw error;
+    return sameImportPayload(replay, payloadHash)
+      ? { status: "success", message: replay.resultMessage }
+      : { status: "error", message: "Esta confirmação já foi usada com dados diferentes. Revise o PDF e tente de novo." };
+  }
 
   revalidatePath("/alimentacao");
   revalidatePath("/painel");
   return {
     status: "success",
-    message: `${created} refeição${created === 1 ? "" : "s"} importada${created === 1 ? "" : "s"}.`,
+    message,
   };
 }

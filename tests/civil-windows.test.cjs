@@ -31,16 +31,20 @@ for (const [domain, actionName, value] of [
     freeze(t);
     const records = [];
     const write = async args => { records.push(args.data ?? args.create); };
-    const prisma = { $transaction: async cb => cb({ workout: { create: write }, meal: { create: write }, weightEntry: { upsert: write }, measurementEntry: { upsert: write } }) };
+    const prisma = {
+      importOperation: { findUnique: async () => null },
+      $transaction: async cb => cb({ importOperation: { create: write }, workout: { create: write }, meal: { create: write }, weightEntry: { upsert: write }, measurementEntry: { upsert: write } }),
+    };
     const action = loadTs('src/app/(app)/' + domain + '/import-actions.ts', {
       '@/lib/auth': auth, '@/lib/prisma': { prisma }, 'next/cache': { revalidatePath() {} },
     })[actionName];
-    assert.equal((await action([value, { ...value, date: null }, { ...value, date: '2026-08-01' }])).status, 'success');
-    assert.ok(records.length >= 3);
-    assert.equal(records[0].date.toISOString(), '2026-08-31T00:00:00.000Z');
-    assert.equal(iso(records.at(-1).date), '2026-08-01');
-    for (const record of records) assert.equal(record.date.getUTCHours(), 0);
-    if (domain === 'treinos') assert.ok(records.every(r => r.status === 'PLANNED'));
+    assert.equal((await action([value, { ...value, date: null }, { ...value, date: '2026-08-01' }], '123e4567-e89b-42d3-a456-426614174000')).status, 'success');
+    const dated = records.filter(record => record.date);
+    assert.ok(dated.length >= 3);
+    assert.equal(dated[0].date.toISOString(), '2026-08-31T00:00:00.000Z');
+    assert.equal(iso(dated.at(-1).date), '2026-08-01');
+    for (const record of dated) assert.equal(record.date.getUTCHours(), 0);
+    if (domain === 'treinos') assert.ok(dated.every(r => r.status === 'PLANNED'));
   });
 }
 

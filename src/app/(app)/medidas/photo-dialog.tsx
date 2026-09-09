@@ -37,7 +37,7 @@ export function BodyPhotoDialog({
         ...(raw as BodyPhotoEstimate),
         date: todayISO(),
       })}
-      apply={(value) =>
+      apply={(value, requestId) =>
         confirmMeasurementImportAction([
           {
             date: value.date,
@@ -51,7 +51,7 @@ export function BodyPhotoDialog({
             calfCm: value.calfCm,
             bodyFatPct: value.bodyFatPct,
           },
-        ])
+        ], requestId)
       }
       renderReview={(value, patch) => (
         <div className="space-y-3">

@@ -1,7 +1,7 @@
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { isAiConfigured } from "@/lib/ai/client";
-import { formatDateBR, formatDateShort, toISODate } from "@/lib/date";
+import { formatDateBR, formatDateShort, toISODate, parseISODate, todayISO } from "@/lib/date";
 import { formatNumber } from "@/lib/metrics";
 import { totalVolume } from "@/lib/workouts";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -23,12 +23,14 @@ export default async function TreinosPage() {
     include: { exercises: true },
   });
 
-  const now = new Date();
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-  const fourWeeksAgo = new Date();
-  fourWeeksAgo.setDate(fourWeeksAgo.getDate() - 28);
+  const today = parseISODate(todayISO())!;
+  const monthStart = new Date(today);
+  monthStart.setUTCDate(1);
+  const fourWeeksAgo = new Date(today);
+  // 28 dias civis incluindo hoje.
+  fourWeeksAgo.setUTCDate(today.getUTCDate() - 27);
 
-  const completed = workouts.filter((w) => w.status === "COMPLETED");
+  const completed = workouts.filter((w) => w.status === "COMPLETED" && w.date <= today);
   const completedThisMonth = completed.filter((w) => w.date >= monthStart);
   const completedLast4Weeks = completed.filter((w) => w.date >= fourWeeksAgo);
 
@@ -92,7 +94,8 @@ export default async function TreinosPage() {
         <StatCard
           label="Treinos no mês"
           value={completedThisMonth.length}
-          hint={now.toLocaleDateString("pt-BR", {
+          hint={today.toLocaleDateString("pt-BR", {
+            timeZone: "UTC",
             month: "long",
             year: "numeric",
           })}

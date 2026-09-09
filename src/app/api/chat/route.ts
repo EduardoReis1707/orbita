@@ -77,6 +77,13 @@ type Message = Groq.Chat.Completions.ChatCompletionMessageParam;
 type ToolCall = Groq.Chat.Completions.ChatCompletionMessageToolCall;
 
 export async function POST(request: NextRequest) {
+  const deadline = Date.now() + 50_000;
+  const cancellation = new AbortController();
+  const signal = AbortSignal.any([request.signal, cancellation.signal, AbortSignal.timeout(50_000)]);
+  const checkActive = () => {
+    signal.throwIfAborted();
+    if (Date.now() >= deadline) throw new Error("Chat deadline exceeded");
+  };
   const user = await requireUser();
 
   if (!isGroqConfigured()) {
@@ -168,6 +175,7 @@ export async function POST(request: NextRequest) {
     persistedMessage = message;
   }
 
+  checkActive();
   const history = await prisma.chatMessage.findMany({
     where: { profileId: user.id },
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
@@ -175,6 +183,7 @@ export async function POST(request: NextRequest) {
   });
   history.reverse();
 
+  checkActive();
   await prisma.chatMessage.create({
     data: { profileId: user.id, role: "USER", content: persistedMessage },
   });
@@ -205,10 +214,24 @@ export async function POST(request: NextRequest) {
   const client = createGroqClient();
   const encoder = new TextEncoder();
 
+  let closed = false;
   const stream = new ReadableStream<Uint8Array>({
+    cancel() {
+      closed = true;
+      cancellation.abort();
+    },
     async start(controller) {
-      const send = (event: StreamEvent) =>
-        controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`));
+      const send = (event: StreamEvent): boolean => {
+        if (closed || request.signal.aborted || cancellation.signal.aborted) return false;
+        try {
+          controller.enqueue(encoder.encode(JSON.stringify(event) + "\n"));
+          return true;
+        } catch {
+          closed = true;
+          cancellation.abort();
+          return false;
+        }
+      };
 
       /** Texto acumulado só da rodada atual (vai na mensagem do assistente). */
       let turnText = "";
@@ -220,6 +243,7 @@ export async function POST(request: NextRequest) {
 
       try {
         for (let iteration = 0; iteration < MAX_ITERATIONS; iteration += 1) {
+          checkActive();
           turnText = "";
 
           // Chamadas de ferramenta chegam fragmentadas por chunk, indexadas.
@@ -228,22 +252,25 @@ export async function POST(request: NextRequest) {
             { id: string; name: string; args: string }
           >();
 
-          try {
+          {
             const groqStream = await client.chat.completions.create({
               model: GROQ_MODEL,
               messages,
               ...(tools.length ? { tools } : { tool_choice: "none" as const }),
               max_completion_tokens: 3000,
               stream: true,
-            });
+            }, { signal, maxRetries: 0, timeout: Math.max(1, deadline - Date.now()) });
 
             for await (const chunk of groqStream) {
+              checkActive();
               const delta = chunk.choices[0]?.delta;
               if (!delta) continue;
 
               if (delta.content) {
-                turnText += delta.content;
-                send({ type: "text", delta: delta.content });
+                if (send({ type: "text", delta: delta.content })) {
+                  turnText += delta.content;
+                  fullAnswer += delta.content;
+                }
               }
 
               for (const toolCallDelta of delta.tool_calls ?? []) {
@@ -262,28 +289,9 @@ export async function POST(request: NextRequest) {
                 pending.set(toolCallDelta.index, entry);
               }
             }
-          } catch (streamError) {
-            // A Groq valida os argumentos de tool call no lado dela antes de
-            // aceitar — se o modelo mandar um formato errado (ex.: lista de
-            // strings em vez de objetos), ela recusa com esse erro específico.
-            // Em vez de desistir, devolve o motivo pro modelo tentar de novo.
-            const toolValidationDetail =
-              streamError instanceof Groq.BadRequestError &&
-              (streamError.error as { code?: string } | undefined)?.code ===
-                "tool_use_failed"
-                ? ((streamError.error as { message?: string } | undefined)
-                    ?.message ?? "formato inválido")
-                : null;
-            if (toolValidationDetail === null) throw streamError;
-
-            messages.push({
-              role: "system",
-              content: `A sua última chamada de ferramenta falhou na validação: ${toolValidationDetail}. Gere os argumentos de novo, seguindo exatamente o schema da ferramenta — cada item de uma lista de objetos (como "exercicios" ou "itens") precisa ser um objeto com os campos pedidos, nunca uma string de texto solta. Se for um plano com vários treinos/dias, registre cada um numa chamada de ferramenta separada em vez de juntar tudo numa lista só.`,
-            });
-            continue;
           }
 
-          fullAnswer += turnText;
+          checkActive();
           if (pending.size === 0) { completed = true; break; }
 
           if (attachmentOnly) throw new Error('Ferramentas não permitidas na leitura de anexo.');
@@ -300,6 +308,7 @@ export async function POST(request: NextRequest) {
           });
 
           for (const call of calls) {
+            checkActive();
             let result: { ok: boolean; summary: string; data?: unknown };
             if (toolCallsUsed >= MAX_TOOL_CALLS) {
               result = {
@@ -331,6 +340,7 @@ export async function POST(request: NextRequest) {
                 });
                 continue;
               }
+              checkActive();
               result = await executeToolCall(call.name, args, {
                 profileId: user.id,
               });
@@ -361,7 +371,7 @@ export async function POST(request: NextRequest) {
       } finally {
 
         const toPersist =
-          fullAnswer.trim() ||
+          fullAnswer ||
           (actionSummaries.length > 0 ? actionSummaries.join("\n") : "");
         if (toPersist) {
           await prisma.chatMessage
@@ -375,7 +385,10 @@ export async function POST(request: NextRequest) {
             .catch(() => { send({ type: "error", message: "A resposta foi gerada, mas não consegui salvar o histórico." }); });
         }
         send({ type: "done" });
-        controller.close();
+        if (!closed) {
+          closed = true;
+          try { controller.close(); } catch { /* Already cancelled. */ }
+        }
       }
     },
   });

@@ -35,12 +35,14 @@ function truncate(text: string): { text: string; truncated: boolean } {
 async function extractPdf(buffer: Buffer): Promise<AttachmentExtractResult> {
   const parser = new PDFParse({ data: buffer });
   try {
+    const info = await parser.getInfo();
+    if (info.total > 30) return { ok: false, error: 'O PDF tem mais de 30 páginas. Envie apenas as páginas de treino ou alimentação que deseja analisar.' };
     // Texto corrido pro contexto geral + detecção de tabelas à parte — ficha
     // de treino/dieta em PDF costuma vir em tabela, e o texto corrido do
     // pdf.js embaralha colunas (perde a relação "exercício ↔ séries ↔ carga").
     const [textResult, tableResult] = await Promise.all([
-      parser.getText(),
-      parser.getTable().catch(() => null),
+      parser.getText({ first: 30 }),
+      parser.getTable({ first: 30 }).catch(() => null),
     ]);
     const text = textResult.text ?? "";
     if (text.trim().length < 20) {
@@ -78,7 +80,7 @@ async function extractPdf(buffer: Buffer): Promise<AttachmentExtractResult> {
 function extractSpreadsheet(buffer: Buffer): AttachmentExtractResult {
   let workbook: XLSX.WorkBook;
   try {
-    workbook = XLSX.read(buffer, { type: "buffer" });
+    workbook = XLSX.read(buffer, { type: "buffer", sheetRows: 501, cellHTML: false, cellStyles: false });
   } catch {
     return {
       ok: false,
@@ -87,6 +89,14 @@ function extractSpreadsheet(buffer: Buffer): AttachmentExtractResult {
     };
   }
 
+  if (workbook.SheetNames.length > 20) return { ok: false, error: 'A planilha deve ter no máximo 20 abas para análise.' };
+  for (const name of workbook.SheetNames) {
+    const ref = workbook.Sheets[name]['!ref'];
+    if (ref) {
+      const range = XLSX.utils.decode_range(ref);
+      if (range.e.r >= 500 || range.e.c >= 50) return { ok: false, error: 'Selecione até 500 linhas e 50 colunas por aba para análise.' };
+    }
+  }
   const sections = workbook.SheetNames.map((name) => {
     const sheet = workbook.Sheets[name];
     const csv = XLSX.utils.sheet_to_csv(sheet).trim();

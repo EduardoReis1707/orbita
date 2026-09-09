@@ -33,13 +33,12 @@ export default async function PainelPage() {
   const profile = await getProfile();
   if (!profile) redirect("/onboarding");
 
-  const now = new Date();
-  const weekStart = new Date(now);
-  weekStart.setDate(now.getDate() - ((now.getDay() + 6) % 7));
-  weekStart.setHours(0, 0, 0, 0);
-  const ninetyAgo = new Date(now);
-  ninetyAgo.setDate(now.getDate() - 90);
-  const today = parseISODate(todayISO()) as Date;
+  const today = parseISODate(todayISO())!;
+  const weekStart = new Date(today);
+  weekStart.setUTCDate(today.getUTCDate() - ((today.getUTCDay() + 6) % 7));
+  const ninetyAgo = new Date(today);
+  // 90 dias civis incluindo hoje.
+  ninetyAgo.setUTCDate(today.getUTCDate() - 89);
 
   const [
     weights90,
@@ -54,18 +53,18 @@ export default async function PainelPage() {
     resolver,
   ] = await Promise.all([
     prisma.weightEntry.findMany({
-      where: { profileId: user.id, date: { gte: ninetyAgo } },
+      where: { profileId: user.id, date: { gte: ninetyAgo, lte: today } },
       orderBy: { date: "asc" },
     }),
     prisma.weightEntry.findFirst({
-      where: { profileId: user.id },
+      where: { profileId: user.id, date: { lte: today } },
       orderBy: { date: "desc" },
     }),
     prisma.workout.count({
       where: {
         profileId: user.id,
         status: "COMPLETED",
-        date: { gte: weekStart },
+        date: { gte: weekStart, lte: today },
       },
     }),
     prisma.workout.findMany({
@@ -74,7 +73,7 @@ export default async function PainelPage() {
       take: 3,
     }),
     prisma.workout.findMany({
-      where: { profileId: user.id, status: "COMPLETED" },
+      where: { profileId: user.id, status: "COMPLETED", date: { lte: today } },
       orderBy: { date: "desc" },
       take: 3,
     }),
@@ -87,12 +86,12 @@ export default async function PainelPage() {
       orderBy: { createdAt: "desc" },
     }),
     prisma.weightEntry.findMany({
-      where: { profileId: user.id },
+      where: { profileId: user.id, date: { lte: today } },
       orderBy: { date: "desc" },
       take: 3,
     }),
     prisma.measurementEntry.findMany({
-      where: { profileId: user.id },
+      where: { profileId: user.id, date: { lte: today } },
       orderBy: { date: "desc" },
       take: 2,
     }),

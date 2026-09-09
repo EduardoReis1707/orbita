@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-require-imports -- Standalone node:test CommonJS harness. */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -78,7 +77,7 @@ test('workout and meal nulls remain null; zero remains zero', async () => {
     const data = h.committed[0].data;
     if (domain === 'treinos') {
       assert.equal(data.durationMin, null);
-      assert.equal(data.status, 'COMPLETED');
+      assert.equal(data.status, 'PLANNED');
       assert.equal(data.exercises.create[0].sets, null);
       assert.equal(data.exercises.create[0].weightKg, 0);
     } else {
@@ -104,5 +103,29 @@ test('invalid nested objects, numeric types and oversized batches are rejected',
       assert.equal((await h.action(batch)).status, 'error');
       assert.equal(h.transactions(), 0);
     }
+  }
+});
+
+
+test('workout import preserves mixed reviewed statuses and defaults missing status to planned', async () => {
+  const [domain, name, valid] = cases[0];
+  const h = setup(domain, name);
+  const result = await h.action([
+    { ...valid, status: 'COMPLETED' },
+    { ...valid, status: 'PLANNED' },
+    valid,
+  ]);
+  assert.equal(result.status, 'success');
+  assert.equal(h.transactions(), 1);
+  assert.deepEqual(h.committed.map(record => record.data.status), ['COMPLETED', 'PLANNED', 'PLANNED']);
+});
+
+test('workout import rejects skipped and invalid statuses before any write', async () => {
+  const [domain, name, valid] = cases[0];
+  for (const status of ['SKIPPED', 'planned', '', null, 1]) {
+    const h = setup(domain, name);
+    assert.equal((await h.action([valid, { ...valid, status }])).status, 'error');
+    assert.equal(h.transactions(), 0);
+    assert.equal(h.committed.length, 0);
   }
 });

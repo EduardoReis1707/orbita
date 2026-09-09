@@ -4,10 +4,9 @@ import { z } from "zod";
 import type { Prisma } from "@prisma/client";
 
 import { revalidatePath } from "next/cache";
-import type { WorkoutStatus } from "@prisma/client";
 
 import { requireUser } from "@/lib/auth";
-import { parseISODate } from "@/lib/date";
+import { parseISODate, todayISO } from "@/lib/date";
 import type { FormState } from "@/lib/forms";
 import { prisma } from "@/lib/prisma";
 import { MUSCLE_GROUPS } from "@/lib/workouts";
@@ -20,6 +19,9 @@ const importDate = z.string().refine((value) => {
 }, "Data inválida.").nullish();
 const numeric = (min: number, max: number) => z.number().min(min).max(max).nullish();
 const batchSchema = z.array(z.object({
+  // Mudança intencional: fichas importadas não comprovam realização.
+  // Aceitar ausência mantém compatibilidade com clientes anteriores.
+  status: z.enum(["PLANNED", "COMPLETED"]).default("PLANNED"),
   name: optionalText, date: importDate, note: optionalText,
   durationMin: numeric(1, 600), muscleGroups: z.array(z.string()).nullish(),
   exercises: z.array(z.object({
@@ -47,6 +49,7 @@ export async function confirmWorkoutImportAction(
   workouts: ImportedWorkout[],
 ): Promise<FormState> {
   const user = await requireUser();
+  const today = parseISODate(todayISO())!;
 
   if (!Array.isArray(workouts) || workouts.length === 0) {
     return { status: "error", message: "Nada para importar." };
@@ -67,7 +70,7 @@ export async function confirmWorkoutImportAction(
         : "Treino importado";
 
     const date =
-      (workout.date && parseISODate(workout.date)) ?? new Date();
+      (workout.date && parseISODate(workout.date)) ?? today;
 
     const muscleGroups = Array.isArray(workout.muscleGroups)
       ? workout.muscleGroups.filter((g): g is string =>
@@ -98,7 +101,7 @@ export async function confirmWorkoutImportAction(
         profileId: user.id,
         name,
         date,
-        status: "COMPLETED" as WorkoutStatus,
+        status: workout.status,
         durationMin: clampInt(workout.durationMin, 1, 600),
         muscleGroups,
         note:

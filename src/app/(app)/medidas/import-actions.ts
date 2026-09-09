@@ -6,7 +6,7 @@ import type { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 
 import { requireUser } from "@/lib/auth";
-import { parseISODate } from "@/lib/date";
+import { parseISODate, todayISO } from "@/lib/date";
 import type { FormState } from "@/lib/forms";
 import { prisma } from "@/lib/prisma";
 import type { ImportedMeasurement } from "@/lib/ai/import-measurements";
@@ -34,6 +34,7 @@ export async function confirmMeasurementImportAction(
   entries: ImportedMeasurement[],
 ): Promise<FormState> {
   const user = await requireUser();
+  const today = parseISODate(todayISO())!;
   if (!Array.isArray(entries) || entries.length === 0) {
     return { status: "error", message: "Nada para importar." };
   }
@@ -48,7 +49,7 @@ export async function confirmMeasurementImportAction(
   let measurementCount = 0;
 
   for (const entry of parsed.data) {
-    const date = (entry.date && parseISODate(entry.date)) ?? new Date();
+    const date = (entry.date && parseISODate(entry.date)) ?? today;
 
     const operation: (typeof operations)[number] = {};
     const weightKg = num(entry.weightKg, 20, 400);

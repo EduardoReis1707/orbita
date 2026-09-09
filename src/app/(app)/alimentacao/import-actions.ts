@@ -7,7 +7,7 @@ import { revalidatePath } from "next/cache";
 import type { MealType } from "@prisma/client";
 
 import { requireUser } from "@/lib/auth";
-import { parseISODate } from "@/lib/date";
+import { parseISODate, todayISO } from "@/lib/date";
 import type { FormState } from "@/lib/forms";
 import { prisma } from "@/lib/prisma";
 import { MEAL_TYPE_ORDER } from "@/lib/nutrition";
@@ -39,6 +39,7 @@ export async function confirmMealImportAction(
   meals: ImportedMeal[],
 ): Promise<FormState> {
   const user = await requireUser();
+  const today = parseISODate(todayISO())!;
   if (!Array.isArray(meals) || meals.length === 0) {
     return { status: "error", message: "Nada para importar." };
   }
@@ -55,7 +56,7 @@ export async function confirmMealImportAction(
     const type = (
       MEAL_TYPE_ORDER.includes(meal.type as MealType) ? meal.type : "OTHER"
     ) as MealType;
-    const date = (meal.date && parseISODate(meal.date)) ?? new Date();
+    const date = (meal.date && parseISODate(meal.date)) ?? today;
     const time =
       typeof meal.time === "string" && /^\d{2}:\d{2}$/.test(meal.time)
         ? meal.time

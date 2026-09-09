@@ -1,9 +1,10 @@
 "use client";
 
 import { todayISO } from "@/lib/date";
-import { describeSets } from "@/lib/workouts";
+import { describeSets, WORKOUT_STATUS_LABELS } from "@/lib/workouts";
 import type { ImportedWorkout } from "@/lib/ai/import-workouts";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PdfImportDialog } from "@/components/ai/pdf-import-dialog";
 import { confirmWorkoutImportAction } from "./import-actions";
 
@@ -21,11 +22,12 @@ export function ImportWorkoutsDialog({
       endpoint="/api/importar/treinos"
       resultKey="workouts"
       title="Importar treino de PDF"
-      description="A IA lê a ficha e monta os treinos. Você revê antes de salvar — confira nomes, cargas e datas."
+      description="A IA lê a ficha e monta os treinos. Você revê antes de salvar — confira nomes, cargas, datas e situação. Os treinos começam como planejados."
       emptyMessage="A IA não encontrou treinos neste PDF."
       normalize={(workout) => ({
         ...workout,
         date: workout.date ?? todayISO(),
+        status: workout.status ?? "PLANNED",
       })}
       apply={confirmWorkoutImportAction}
       renderCard={(workout, patch) => (
@@ -42,6 +44,24 @@ export function ImportWorkoutsDialog({
               onChange={(e) => patch({ date: e.target.value })}
               className="h-8 w-auto"
             />
+          </div>
+          <div className="space-y-1">
+            <span className="text-sm font-medium">Situação</span>
+            <Select
+              value={workout.status ?? "PLANNED"}
+              items={WORKOUT_STATUS_LABELS}
+              onValueChange={(status) => {
+                if (status === "PLANNED" || status === "COMPLETED") patch({ status });
+              }}
+            >
+              <SelectTrigger className="h-8 w-full" aria-label={"Situação do treino " + workout.name}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="PLANNED">{WORKOUT_STATUS_LABELS.PLANNED}</SelectItem>
+                <SelectItem value="COMPLETED">{WORKOUT_STATUS_LABELS.COMPLETED}</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           {workout.muscleGroups.length > 0 ? (
             <div className="flex flex-wrap gap-1">

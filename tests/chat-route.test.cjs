@@ -8,7 +8,7 @@ function deferred() {
   return { promise, resolve };
 }
 function fixture(options = {}) {
-  const writes = [], calls = [], executions = [];
+  const writes = [], calls = [], executions = [], sdkOptions = [];
   let historyQuery;
   class APIError extends Error {}
   class BadRequestError extends APIError {}
@@ -29,8 +29,10 @@ function fixture(options = {}) {
     } },
     '@/lib/ai/groq-client': {
       GROQ_MODEL: 'mock-model', isGroqConfigured: () => true,
-      createGroqClient: () => ({ chat: { completions: { create: async params => {
+      createGroqClient: () => ({ chat: { completions: { create: async (params, requestOptions) => {
+        sdkOptions.push(requestOptions);
         calls.push(structuredClone(params));
+        if (options.stream) return options.stream(requestOptions);
         return (async function* () {
           for (const delta of options.deltas || [{ content: 'Resposta' }]) yield { choices: [{ delta }] };
           if (options.streamError) throw new Error('mock stream failure');
@@ -48,7 +50,7 @@ function fixture(options = {}) {
       extractAttachmentText: async () => ({ ok: true, text: 'MOCK_DOCUMENT_CONTENT' }),
     },
   });
-  return { ...route, writes, calls, executions, historyQuery: () => historyQuery };
+  return { ...route, writes, calls, executions, sdkOptions, historyQuery: () => historyQuery };
 }
 function jsonRequest(body) {
   return new Request('https://app.example/api/chat', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
@@ -137,3 +139,44 @@ test('chat: falha do stream emite erro e encerra sem expor detalhe interno', asy
   assert.doesNotMatch(result[0].message, /mock stream failure/);
   assert.equal(f.writes.filter(row => row.role === 'ASSISTANT').length, 0);
 });
+
+
+test('chat: texto parcial enviado é salvo após falha do stream', async () => {
+  const f = fixture({ deltas: [{ content: 'Parte ' }, { content: 'recebida' }], streamError: true });
+  const result = await events(await f.POST(jsonRequest({ message: 'Oi' })));
+  assert.deepEqual(result.map(event => event.type), ['text', 'text', 'error', 'done']);
+  assert.equal(f.writes.at(-1).content, 'Parte recebida');
+  assert.equal(f.sdkOptions[0].maxRetries, 0);
+  assert.ok(f.sdkOptions[0].signal instanceof AbortSignal);
+  assert.ok(f.sdkOptions[0].timeout > 0 && f.sdkOptions[0].timeout <= 50000);
+  assert.equal(f.calls.length, 1);
+});
+
+for (const mode of ['cancel', 'disconnect']) {
+  test('chat: ' + mode + ' antes das tools bloqueia mutações e salva parcial', async () => {
+    const gate = deferred(), finished = deferred();
+    const f = fixture({
+      stream: async function* () {
+        yield { choices: [{ delta: { content: 'Já enviado' } }] };
+        await gate.promise;
+        yield { choices: [{ delta: { tool_calls: [{ index: 0, id: 'tool-1', function: { name: 'mock_tool', arguments: '{}' } }] } }] };
+      },
+      persist: async () => { finished.resolve(); },
+    });
+    const disconnect = new AbortController();
+    const request = new Request(jsonRequest({ message: 'Oi' }), { signal: disconnect.signal });
+    const response = await f.POST(request);
+    const reader = response.body.getReader();
+    assert.equal(JSON.parse(new TextDecoder().decode((await reader.read()).value)).delta, 'Já enviado');
+    if (mode === 'cancel') await reader.cancel();
+    else disconnect.abort();
+    assert.equal(f.sdkOptions[0].signal.aborted, true);
+    gate.resolve();
+    await finished.promise;
+    await new Promise(resolve => setImmediate(resolve));
+    assert.deepEqual(f.executions, []);
+    assert.equal(f.writes.at(-1).content, 'Já enviado');
+    assert.equal(f.calls.length, 1);
+    assert.equal((await reader.read()).done, true);
+  });
+}

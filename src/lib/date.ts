@@ -1,15 +1,23 @@
-/** Data de hoje no formato `yyyy-mm-dd` (fuso local). */
-export function todayISO(): string {
-  const now = new Date();
-  const offset = now.getTimezoneOffset() * 60_000;
-  return new Date(now.getTime() - offset).toISOString().slice(0, 10);
+const civilDateFormatter = new Intl.DateTimeFormat("en-US", {
+  timeZone: "America/Sao_Paulo",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+
+/** Data civil do produto em Sao Paulo, no formato yyyy-mm-dd. */
+export function todayISO(now: Date = new Date()): string {
+  const parts = civilDateFormatter.formatToParts(now);
+  const part = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((value) => value.type === type)!.value;
+  return [part("year").padStart(4, "0"), part("month"), part("day")].join("-");
 }
 
 /** Converte `yyyy-mm-dd` para um `Date` (meia-noite UTC). Retorna null se inválido. */
 export function parseISODate(value: string): Date | null {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
   const date = new Date(`${value}T00:00:00.000Z`);
-  return Number.isNaN(date.getTime()) ? null : date;
+  return Number.isNaN(date.getTime()) || toISODate(date) !== value ? null : date;
 }
 
 /** `Date` -> `yyyy-mm-dd` usando os componentes UTC. */

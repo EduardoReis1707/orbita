@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 
 import { initialFormState } from "@/lib/forms";
 import {
@@ -17,8 +17,10 @@ import { Label } from "@/components/ui/label";
 import { FieldError, FormAlert, SubmitButton } from "@/components/form-feedback";
 import { signInAction } from "../actions";
 
-export function SignInForm() {
+export function SignInForm({ next }: { next: string | null }) {
   const [state, action] = useActionState(signInAction, initialFormState);
+  // Mantém o e-mail digitado após um erro (o React reseta o form ao concluir a action).
+  const [email, setEmail] = useState("");
 
   return (
     <Card>
@@ -29,7 +31,14 @@ export function SignInForm() {
         </CardDescription>
       </CardHeader>
       <form action={action}>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-4 pb-6">
+          {next ? (
+            <p className="rounded-lg border border-border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
+              Entre para continuar. Se você já estava usando o app, a sua sessão
+              expirou.
+            </p>
+          ) : null}
+          {next ? <input type="hidden" name="next" value={next} /> : null}
           <FormAlert state={state} />
           <div className="space-y-1.5">
             <Label htmlFor="email">E-mail</Label>
@@ -38,6 +47,8 @@ export function SignInForm() {
               name="email"
               type="email"
               autoComplete="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               required
             />
             <FieldError errors={state.fieldErrors?.email} />

@@ -7,8 +7,52 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { XIcon } from "lucide-react"
 
-function Dialog({ ...props }: DialogPrimitive.Root.Props) {
-  return <DialogPrimitive.Root data-slot="dialog" {...props} />
+function Dialog({ open, onOpenChange, ...props }: DialogPrimitive.Root.Props) {
+  const pushedRef = React.useRef(false)
+  const closeRef = React.useRef(onOpenChange)
+
+  React.useEffect(() => {
+    closeRef.current = onOpenChange
+  })
+
+  // Enquanto o modal está aberto, empurra uma entrada no histórico para que o
+  // "voltar" do navegador (gesto instintivo no celular) apenas feche o modal em
+  // vez de sair da página e descartar o que foi digitado.
+  React.useEffect(() => {
+    if (!open || typeof window === "undefined") return
+
+    window.history.pushState({ __appDialog: true }, "")
+    pushedRef.current = true
+
+    const onPopState = () => {
+      pushedRef.current = false
+      const close = closeRef.current as ((next: boolean) => void) | undefined
+      close?.(false)
+    }
+    window.addEventListener("popstate", onPopState)
+
+    return () => {
+      window.removeEventListener("popstate", onPopState)
+      // Fechou por outro caminho (Esc, botão, clique fora): consome a entrada
+      // extra sem navegar para fora da página.
+      if (
+        pushedRef.current &&
+        (window.history.state as { __appDialog?: boolean } | null)?.__appDialog
+      ) {
+        pushedRef.current = false
+        window.history.back()
+      }
+    }
+  }, [open])
+
+  return (
+    <DialogPrimitive.Root
+      data-slot="dialog"
+      open={open}
+      onOpenChange={onOpenChange}
+      {...props}
+    />
+  )
 }
 
 function DialogTrigger({ ...props }: DialogPrimitive.Trigger.Props) {
@@ -53,7 +97,7 @@ function DialogContent({
       <DialogPrimitive.Popup
         data-slot="dialog-content"
         className={cn(
-          "fixed top-1/2 left-1/2 z-50 grid w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 rounded-xl bg-popover p-4 text-sm text-popover-foreground ring-1 ring-foreground/10 duration-100 outline-none sm:max-w-sm data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
+          "fixed top-1/2 left-1/2 z-50 grid max-h-[85dvh] w-full overflow-y-auto max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 rounded-xl bg-popover p-4 text-sm text-popover-foreground ring-1 ring-foreground/10 duration-100 outline-none sm:max-w-sm data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
           className
         )}
         {...props}

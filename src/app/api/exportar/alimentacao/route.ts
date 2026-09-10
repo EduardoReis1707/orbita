@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 
 import { getProfile, requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { takeAiRequestSlot } from "@/lib/ai/rate-limit";
 import { parseISODate, toISODate, todayISO } from "@/lib/date";
 import { downloadHeaders, toCsv } from "@/lib/export";
 import { renderNutritionPdf } from "@/lib/pdf/nutrition-pdf";
@@ -32,6 +33,18 @@ export async function GET(request: NextRequest) {
   const stamp = todayISO();
 
   if (format === "pdf") {
+    const quota = await takeAiRequestSlot(user.id, "pdf");
+    if (!quota.allowed) {
+      return NextResponse.json(
+        {
+          error: `Você atingiu o limite de PDFs do seu plano. Tente novamente em cerca de ${Math.ceil(quota.retryAfterSeconds / 60)} min.`,
+        },
+        {
+          status: 429,
+          headers: { "Retry-After": String(quota.retryAfterSeconds) },
+        },
+      );
+    }
     const profile = await getProfile();
     const buffer = await renderNutritionPdf(
       meals.map((meal) => ({

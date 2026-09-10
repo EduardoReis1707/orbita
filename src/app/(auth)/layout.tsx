@@ -2,19 +2,17 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 
 import { BrandMark } from "@/components/brand-mark";
-import { ThemeToggle } from "@/components/theme-toggle";
 
 export default function AuthLayout({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-full flex-col">
-      <header className="flex h-14 items-center justify-between px-4">
+      <header className="flex h-14 items-center px-4">
         <Link href="/" className="flex items-center gap-2">
           <BrandMark />
           <span className="font-heading text-sm font-semibold">
             Auxiliar de Treino
           </span>
         </Link>
-        <ThemeToggle />
       </header>
       <main className="flex flex-1 items-center justify-center p-4">
         <div className="w-full max-w-sm">{children}</div>

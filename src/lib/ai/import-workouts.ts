@@ -11,6 +11,8 @@ export type ImportedExercise = {
 };
 
 export type ImportedWorkout = {
+  /** Revisado pelo usuário; ausente passa intencionalmente a significar PLANNED. */
+  status?: "PLANNED" | "COMPLETED";
   name: string;
   muscleGroups: string[];
   date: string | null;

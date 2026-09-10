@@ -49,6 +49,8 @@ export async function saveWorkoutAction(
 
   const name = str(formData, "name");
   if (name.length < 2) fieldErrors.name = ["Dê um nome ao treino."];
+  else if (name.length > 80)
+    fieldErrors.name = ["O nome do treino é longo demais (máx. 80 caracteres)."];
 
   const date = parseISODate(str(formData, "date"));
   if (!date) fieldErrors.date = ["Informe uma data válida."];

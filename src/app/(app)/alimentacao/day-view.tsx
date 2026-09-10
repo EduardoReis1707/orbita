@@ -5,6 +5,7 @@ import { CameraIcon, PencilIcon, PlusIcon, SparklesIcon } from "lucide-react";
 import type { FoodItem, Meal } from "@prisma/client";
 
 import { formatNumber } from "@/lib/metrics";
+import { useOpenFromParam } from "@/lib/use-open-from-param";
 import {
   MEAL_TYPE_LABELS,
   MEAL_TYPE_ORDER,
@@ -31,7 +32,9 @@ export function DayView({
   meals: MealWithItems[];
   aiEnabled: boolean;
 }) {
-  const [creatingMeal, setCreatingMeal] = useState(false);
+  const [creatingMeal, setCreatingMeal] = useState(
+    useOpenFromParam("novo", "refeicao"),
+  );
   const [importing, setImporting] = useState(false);
   const [photo, setPhoto] = useState(false);
   const [editingMeal, setEditingMeal] = useState<Meal | null>(null);

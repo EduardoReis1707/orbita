@@ -26,6 +26,7 @@ export function ExportMealsButton({ defaultDate }: { defaultDate?: string }) {
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [downloading, setDownloading] = useState(false);
 
   function openDialog() {
     setFrom("");
@@ -34,7 +35,7 @@ export function ExportMealsButton({ defaultDate }: { defaultDate?: string }) {
     setOpen(true);
   }
 
-  function download(format: "pdf" | "csv" | "json") {
+  async function download(format: "pdf" | "csv" | "json") {
     if (from && to && from > to) {
       setError("A data inicial não pode ser depois da final.");
       return;
@@ -42,7 +43,15 @@ export function ExportMealsButton({ defaultDate }: { defaultDate?: string }) {
     const params = new URLSearchParams({ formato: format });
     if (from) params.set("de", from);
     if (to) params.set("ate", to);
-    triggerDownload(`/api/exportar/alimentacao?${params.toString()}`);
+    setDownloading(true);
+    const result = await triggerDownload(
+      `/api/exportar/alimentacao?${params.toString()}`,
+    );
+    setDownloading(false);
+    if (!result.ok) {
+      setError(result.error);
+      return;
+    }
     setOpen(false);
   }
 
@@ -100,7 +109,8 @@ export function ExportMealsButton({ defaultDate }: { defaultDate?: string }) {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => download("pdf")}
+              disabled={downloading}
+              onClick={() => void download("pdf")}
             >
               <FileTextIcon />
               PDF
@@ -108,7 +118,8 @@ export function ExportMealsButton({ defaultDate }: { defaultDate?: string }) {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => download("csv")}
+              disabled={downloading}
+              onClick={() => void download("csv")}
             >
               <FileSpreadsheetIcon />
               CSV
@@ -116,7 +127,8 @@ export function ExportMealsButton({ defaultDate }: { defaultDate?: string }) {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => download("json")}
+              disabled={downloading}
+              onClick={() => void download("json")}
             >
               <FileJsonIcon />
               JSON

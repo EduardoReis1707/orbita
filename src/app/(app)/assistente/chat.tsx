@@ -1,7 +1,11 @@
 "use client";
 
 import {
+  type ChangeEvent,
   type FormEvent,
+  type KeyboardEvent,
+  type ReactNode,
+  useCallback,
   useEffect,
   useRef,
   useState,
@@ -11,15 +15,19 @@ import { useRouter } from "next/navigation";
 import {
   AlertCircleIcon,
   CheckCircle2Icon,
+  Clock3Icon,
+  FileTextIcon,
+  MessageCircleIcon,
+  PaperclipIcon,
+  RotateCcwIcon,
   SendIcon,
-  SparklesIcon,
   Trash2Icon,
+  XIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { clearChatAction } from "./actions";
 
 type ChatAction = { name: string; summary: string; ok: boolean };
@@ -28,6 +36,7 @@ type Msg = {
   role: "user" | "assistant";
   content: string;
   actions?: ChatAction[];
+  attachmentName?: string;
 };
 
 /** Eventos NDJSON emitidos por `/api/chat` (uma linha JSON por evento). */
@@ -36,6 +45,42 @@ type StreamEvent =
   | { type: "action"; name: string; summary: string; ok: boolean }
   | { type: "error"; message: string }
   | { type: "done" };
+
+type UsageStatus = {
+  plan: "FREE" | "PRO";
+  planLabel: string;
+  resetsAt: string;
+  text: { used: number; limit: number };
+  attachment: { used: number; limit: number };
+  pdf: { used: number; limit: number };
+};
+
+/** Mesmo teto do servidor (`src/lib/ai/attachment-extract.ts`) — feedback já no cliente. */
+const MAX_ATTACHMENT_BYTES = 4 * 1024 * 1024;
+
+function formatResetTime(resetsAt: string, now: number): string {
+  const seconds = Math.max(0, Math.ceil((new Date(resetsAt).getTime() - now) / 1000));
+  if (seconds <= 0) return "atualizando";
+  const minutes = Math.ceil(seconds / 60);
+  return minutes === 1 ? "em 1 min" : `em ${minutes} min`;
+}
+
+/**
+ * Interpreta só o `**negrito**` que o modelo usa nas respostas — sem trazer
+ * uma lib de markdown pra isso. Quebras de linha continuam via
+ * `whitespace-pre-wrap` no elemento pai; aqui só troca os asteriscos por
+ * `<strong>` em vez de mostrá-los literalmente.
+ */
+function renderInlineMarkdown(text: string): ReactNode {
+  const parts = text.split(/(\*\*[^*\n]+\*\*)/g);
+  return parts.map((part, index) =>
+    part.startsWith("**") && part.endsWith("**") ? (
+      <strong key={index}>{part.slice(2, -2)}</strong>
+    ) : (
+      part
+    ),
+  );
+}
 
 const SUGGESTIONS = [
   "Registra meu peso de hoje: 88 kg",
@@ -47,28 +92,74 @@ const SUGGESTIONS = [
 export function AssistantChat({
   initialMessages,
   aiEnabled,
+  welcomeMessage,
 }: {
   initialMessages: Msg[];
   aiEnabled: boolean;
+  /** Boas-vindas roteirizadas (grátis, sem IA) — mostradas sempre que o chat está vazio. */
+  welcomeMessage: string;
 }) {
   const router = useRouter();
-  const [messages, setMessages] = useState<Msg[]>(initialMessages);
+  const buildWelcome = (): Msg[] => [
+    { id: "welcome", role: "assistant", content: welcomeMessage },
+  ];
+  const [messages, setMessages] = useState<Msg[]>(
+    initialMessages.length > 0 ? initialMessages : buildWelcome(),
+  );
   const [input, setInput] = useState("");
+  const [attachedFile, setAttachedFile] = useState<File | null>(null);
   const [sending, setSending] = useState(false);
+  /** Última falha do envio anterior — habilita o botão "Tentar de novo". */
+  const [retryError, setRetryError] = useState<string | null>(null);
+  const [usage, setUsage] = useState<UsageStatus | null>(null);
+  const [now, setNow] = useState(() => Date.now());
   const [clearing, startClearing] = useTransition();
   const bottomRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  /** O que foi enviado por último, pra reenviar igual no "Tentar de novo". */
+  const lastSendRef = useRef<{ text: string; file: File | null } | null>(null);
+
+  const refreshUsage = useCallback(async () => {
+    try {
+      const response = await fetch("/api/ai/uso", { cache: "no-store" });
+      if (response.ok) setUsage((await response.json()) as UsageStatus);
+    } catch {
+      // O guia é complementar: uma falha nele não deve bloquear o chat.
+    }
+  }, []);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [messages]);
 
-  async function send(text: string) {
-    const trimmed = text.trim();
-    if (!trimmed || sending) return;
+  useEffect(() => {
+    const initialLoad = window.setTimeout(() => void refreshUsage(), 0);
+    const interval = window.setInterval(() => setNow(Date.now()), 15_000);
+    return () => {
+      window.clearTimeout(initialLoad);
+      window.clearInterval(interval);
+    };
+  }, [refreshUsage]);
 
+  async function send(text: string, file?: File | null) {
+    const trimmed = text.trim();
+    if (sending || clearing) return;
+    if (!trimmed && !file) return;
+
+    lastSendRef.current = { text: trimmed, file: file ?? null };
+    setRetryError(null);
     setInput("");
+    setAttachedFile(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+    if (textareaRef.current) textareaRef.current.style.height = "auto";
     setSending(true);
-    const userMsg: Msg = { id: crypto.randomUUID(), role: "user", content: trimmed };
+    const userMsg: Msg = {
+      id: crypto.randomUUID(),
+      role: "user",
+      content: trimmed,
+      attachmentName: file?.name,
+    };
     const assistantMsg: Msg = {
       id: crypto.randomUUID(),
       role: "assistant",
@@ -81,12 +172,16 @@ export function AssistantChat({
         current.map((m) => (m.id === assistantMsg.id ? patch(m) : m)),
       );
 
+    let sawDone = false;
     let sawText = false;
     let sawAction = false;
     let hadError = false;
+    let errorMessage = "";
 
     const applyEvent = (event: StreamEvent) => {
-      if (event.type === "text") {
+      if (event.type === "done") {
+        sawDone = true;
+      } else if (event.type === "text") {
         sawText = true;
         patchAssistant((m) => ({ ...m, content: m.content + event.delta }));
       } else if (event.type === "action") {
@@ -100,15 +195,29 @@ export function AssistantChat({
         }));
       } else if (event.type === "error") {
         hadError = true;
+        if (event.message) errorMessage = event.message;
       }
     };
 
+    const fallbackError =
+      "Não consegui gerar a resposta agora. Tente de novo em instantes.";
+
     try {
-      const response = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: trimmed }),
-      });
+      const response = file
+        ? await fetch("/api/chat", {
+            method: "POST",
+            body: (() => {
+              const formData = new FormData();
+              formData.append("message", trimmed);
+              formData.append("file", file);
+              return formData;
+            })(),
+          })
+        : await fetch("/api/chat", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ message: trimmed }),
+          });
 
       if (!response.ok || !response.body) {
         const data = await response.json().catch(() => ({}));
@@ -139,22 +248,28 @@ export function AssistantChat({
         if (done) break;
         drain(decoder.decode(value, { stream: true }));
       }
-      drain("", true);
+      drain(decoder.decode(), true);
+      if (!sawDone) throw new Error("A conexão foi interrompida. Confira as ações já realizadas antes de tentar novamente.");
 
       if (hadError) {
+        const shown = errorMessage || fallbackError;
         patchAssistant((m) => ({
           ...m,
-          content: `${m.content}${m.content ? "\n\n" : ""}_(erro ao gerar a resposta)_`,
+          content: `${m.content}${m.content ? "\n\n" : ""}${shown}`,
         }));
+        setRetryError(shown);
       } else if (!sawText && !sawAction) {
-        patchAssistant((m) => ({ ...m, content: "_(sem resposta)_" }));
+        patchAssistant((m) => ({ ...m, content: "(sem resposta)" }));
       }
 
       if (sawAction) router.refresh();
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Não foi possível responder.",
-      );
+      const shown =
+        error instanceof Error && error.message
+          ? error.message
+          : fallbackError;
+      toast.error(shown);
+      setRetryError(shown);
       setMessages((current) => {
         const target = current.find((m) => m.id === assistantMsg.id);
         if (target && !target.content && !target.actions?.length) {
@@ -164,25 +279,65 @@ export function AssistantChat({
           m.id === assistantMsg.id
             ? {
                 ...m,
-                content: `${m.content}${m.content ? "\n\n" : ""}_(erro ao gerar a resposta)_`,
+                content: `${m.content}${m.content ? "\n\n" : ""}${shown}`,
               }
             : m,
         );
       });
     } finally {
       setSending(false);
+      void refreshUsage();
     }
+  }
+
+  function retryLastSend() {
+    const last = lastSendRef.current;
+    if (!last || sending) return;
+    void send(last.text, last.file);
   }
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    void send(input);
+    void send(input, attachedFile);
   }
+
+  function handleComposeKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
+    // Enter envia; Shift+Enter pula linha. `isComposing` evita enviar no meio
+    // de um acento/IME.
+    if (
+      event.key === "Enter" &&
+      !event.shiftKey &&
+      !event.nativeEvent.isComposing
+    ) {
+      event.preventDefault();
+      void send(input, attachedFile);
+    }
+  }
+
+  function autoGrowTextarea(el: HTMLTextAreaElement) {
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight, 140)}px`;
+  }
+
+  function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (file.size > MAX_ATTACHMENT_BYTES) {
+      toast.error("Arquivo muito grande — o limite é 4 MB.");
+      event.target.value = "";
+      return;
+    }
+    setAttachedFile(file);
+  }
+
+  const isFreshChat = messages.length === 1 && messages[0]?.id === "welcome";
 
   function clearAll() {
     startClearing(async () => {
       await clearChatAction();
-      setMessages([]);
+      setMessages(buildWelcome());
+      setRetryError(null);
+      lastSendRef.current = null;
       router.refresh();
     });
   }
@@ -204,12 +359,12 @@ export function AssistantChat({
           Orientações gerais — não substituem nutricionista, médico ou educador
           físico.
         </p>
-        {messages.length > 0 ? (
+        {!isFreshChat ? (
           <Button
             variant="ghost"
             size="xs"
             onClick={clearAll}
-            disabled={clearing}
+            disabled={clearing || sending}
           >
             <Trash2Icon />
             Limpar
@@ -217,32 +372,40 @@ export function AssistantChat({
         ) : null}
       </div>
 
-      <div className="flex-1 space-y-3 overflow-y-auto rounded-lg border bg-card p-3">
-        {messages.length === 0 ? (
-          <div className="flex h-full flex-col items-center justify-center gap-4 text-center">
-            <span className="flex size-10 items-center justify-center rounded-lg bg-brand-gradient text-white">
-              <SparklesIcon className="size-5" />
+      {usage ? (
+        <div
+          className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border bg-muted/40 px-3 py-2 text-xs text-muted-foreground"
+          role="status"
+        >
+          <span className="font-medium text-foreground">
+            Plano {usage.planLabel}
+          </span>
+          <span className="inline-flex items-center gap-1">
+            <MessageCircleIcon className="size-3.5" />
+            {usage.text.used}/{usage.text.limit} mensagens
+          </span>
+          <span className="inline-flex items-center gap-1">
+            <PaperclipIcon className="size-3.5" />
+            {usage.attachment.used}/{usage.attachment.limit} arquivos
+          </span>
+          <span className="inline-flex items-center gap-1">
+            <FileTextIcon className="size-3.5" />
+            {usage.pdf.used}/{usage.pdf.limit} PDFs
+          </span>
+          <span className="inline-flex items-center gap-1">
+            <Clock3Icon className="size-3.5" />
+            reinicia {formatResetTime(usage.resetsAt, now)}
+          </span>
+          {usage.plan === "FREE" ? (
+            <span className="w-full text-[0.7rem]">
+              O plano Pro libera mais mensagens, arquivos e PDFs por janela.
             </span>
-            <p className="text-sm text-muted-foreground">
-              Pergunte sobre treino, alimentação ou suas metas, ou peça para
-              registrar peso, refeições, treinos e metas. O assistente conhece o
-              seu perfil e os seus registros recentes.
-            </p>
-            <div className="flex flex-wrap justify-center gap-1.5">
-              {SUGGESTIONS.map((suggestion) => (
-                <button
-                  key={suggestion}
-                  type="button"
-                  onClick={() => void send(suggestion)}
-                  className="rounded-full border px-3 py-1 text-xs text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
-                >
-                  {suggestion}
-                </button>
-              ))}
-            </div>
-          </div>
-        ) : (
-          messages.map((message) => (
+          ) : null}
+        </div>
+      ) : null}
+
+      <div className="flex-1 space-y-3 overflow-y-auto rounded-lg border bg-card p-3">
+        {messages.map((message) => (
             <div
               key={message.id}
               className={cn(
@@ -250,21 +413,33 @@ export function AssistantChat({
                 message.role === "user" ? "items-end" : "items-start",
               )}
             >
+              {message.attachmentName ? (
+                <span
+                  className={cn(
+                    "inline-flex max-w-[85%] items-center gap-1 rounded-full border px-2 py-0.5 text-xs text-muted-foreground",
+                  )}
+                >
+                  <PaperclipIcon className="size-3 shrink-0" />
+                  {message.attachmentName}
+                </span>
+              ) : null}
+
               {message.content || sending ? (
                 <div
                   className={cn(
-                    "max-w-[85%] rounded-lg px-3 py-2 text-sm whitespace-pre-wrap",
+                    "max-w-[85%] break-words rounded-lg px-3 py-2 text-sm whitespace-pre-wrap",
                     message.role === "user"
                       ? "bg-primary text-primary-foreground"
                       : "bg-muted",
                   )}
                 >
-                  {message.content ||
-                    (sending ? (
-                      <span className="text-muted-foreground">pensando…</span>
-                    ) : (
-                      ""
-                    ))}
+                  {message.content ? (
+                    renderInlineMarkdown(message.content)
+                  ) : sending ? (
+                    <span className="text-muted-foreground">pensando…</span>
+                  ) : (
+                    ""
+                  )}
                 </div>
               ) : null}
 
@@ -291,23 +466,94 @@ export function AssistantChat({
                 </div>
               ) : null}
             </div>
-          ))
-        )}
+          ))}
+        {isFreshChat ? (
+          <div className="flex flex-wrap gap-1.5 pt-1">
+            {SUGGESTIONS.map((suggestion) => (
+              <button
+                key={suggestion}
+                type="button"
+                onClick={() => void send(suggestion)}
+                className="rounded-full border px-3 py-1 text-xs text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
+              >
+                {suggestion}
+              </button>
+            ))}
+          </div>
+        ) : null}
+        {retryError && !sending ? (
+          <div className="flex items-center gap-2 pt-1">
+            <Button variant="outline" size="sm" onClick={retryLastSend}>
+              <RotateCcwIcon />
+              Tentar de novo
+            </Button>
+          </div>
+        ) : null}
         <div ref={bottomRef} />
       </div>
 
-      <form onSubmit={handleSubmit} className="flex gap-2 pt-2">
-        <Input
+      {attachedFile ? (
+        <div className="mt-2 flex items-center gap-2 self-start rounded-full border bg-card py-1 pr-1 pl-3 text-xs">
+          <PaperclipIcon className="size-3.5 shrink-0 text-muted-foreground" />
+          <span className="truncate">{attachedFile.name}</span>
+          <button
+            type="button"
+            onClick={() => {
+              setAttachedFile(null);
+              if (fileInputRef.current) fileInputRef.current.value = "";
+            }}
+            className="flex size-5 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+            aria-label="Remover anexo"
+          >
+            <XIcon className="size-3.5" />
+          </button>
+        </div>
+      ) : null}
+
+      <form onSubmit={handleSubmit} className="flex items-end gap-2 pt-2">
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".pdf,.xlsx,.xls,application/pdf,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+          hidden
+          onChange={handleFileChange}
+        />
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          disabled={sending}
+          onClick={() => fileInputRef.current?.click()}
+          aria-label="Anexar PDF ou planilha"
+        >
+          <PaperclipIcon />
+        </Button>
+        <textarea
+          ref={textareaRef}
           value={input}
-          onChange={(event) => setInput(event.target.value)}
+          onChange={(event) => {
+            setInput(event.target.value);
+            autoGrowTextarea(event.target);
+          }}
+          onKeyDown={handleComposeKeyDown}
+          rows={1}
+          aria-label="Mensagem para o assistente"
           placeholder="Escreva a sua pergunta…"
           maxLength={2000}
           disabled={sending}
+          className="max-h-35 min-h-8 flex-1 resize-none rounded-lg border border-input bg-transparent px-2.5 py-1.5 text-base leading-relaxed transition-colors outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm dark:bg-input/30"
         />
-        <Button type="submit" disabled={sending || !input.trim()}>
+        <Button
+          aria-label="Enviar mensagem"
+          type="submit"
+          disabled={sending || (!input.trim() && !attachedFile)}
+        >
           <SendIcon />
         </Button>
       </form>
+      <p className="pt-1 text-center text-[0.7rem] text-muted-foreground">
+        Enter envia · Shift+Enter pula linha
+      </p>
     </div>
   );
 }

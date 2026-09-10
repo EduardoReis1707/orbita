@@ -14,6 +14,7 @@ import { formatDateBR } from "@/lib/date";
 import { formatNumber } from "@/lib/metrics";
 import { WORKOUT_STATUS_LABELS, WORKOUT_STATUS_TONE } from "@/lib/workouts";
 import { cn } from "@/lib/utils";
+import { useOpenFromParam } from "@/lib/use-open-from-param";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ConfirmDeleteButton } from "@/components/confirm-delete-button";
@@ -40,7 +41,7 @@ export function WorkoutsPanel({
   workouts: WorkoutCardData[];
   aiEnabled: boolean;
 }) {
-  const [creating, setCreating] = useState(false);
+  const [creating, setCreating] = useState(useOpenFromParam("novo", "1"));
   const [importing, setImporting] = useState(false);
   const [editing, setEditing] = useState<Workout | null>(null);
 
@@ -84,7 +85,7 @@ export function WorkoutsPanel({
                     <div className="flex flex-wrap items-center gap-2">
                       <Link
                         href={`/treinos/${workout.id}`}
-                        className="font-medium hover:underline"
+                        className="font-medium break-words hover:underline"
                       >
                         {workout.name}
                       </Link>

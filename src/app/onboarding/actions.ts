@@ -96,5 +96,5 @@ export async function completeOnboardingAction(
     update: values,
   });
 
-  redirect("/painel");
+  redirect("/assistente");
 }

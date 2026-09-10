@@ -8,8 +8,15 @@ import type { Goal } from "@prisma/client";
 
 import { formatDateBR } from "@/lib/date";
 import { formatNumber } from "@/lib/metrics";
+import { MEASUREMENT_FIELDS } from "@/lib/measurements";
 import type { GoalProgress } from "@/lib/goals";
+
+/** Rótulo legível para a chave interna de uma meta (ex.: waistCm → Cintura). */
+function metricKeyLabel(key: string): string {
+  return MEASUREMENT_FIELDS.find((f) => f.key === key)?.label ?? key;
+}
 import { cn } from "@/lib/utils";
+import { useOpenFromParam } from "@/lib/use-open-from-param";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -29,7 +36,7 @@ export type GoalCardData = Goal & {
 };
 
 export function GoalsPanel({ goals }: { goals: GoalCardData[] }) {
-  const [creating, setCreating] = useState(false);
+  const [creating, setCreating] = useState(useOpenFromParam("novo", "1"));
   const [editing, setEditing] = useState<Goal | null>(null);
 
   const active = goals.filter((g) => g.status === "ACTIVE");
@@ -134,7 +141,7 @@ function GoalRow({
               <p className="font-medium">{goal.title}</p>
               <p className="text-xs text-muted-foreground">
                 {goal.metricLabel}
-                {goal.metricKey ? ` · ${goal.metricKey}` : ""}
+                {goal.metricKey ? ` · ${metricKeyLabel(goal.metricKey)}` : ""}
                 {" · "}
                 {formatNumber(goal.startValue)} → {formatNumber(goal.targetValue)}
                 {goal.unit ? ` ${goal.unit}` : ""}

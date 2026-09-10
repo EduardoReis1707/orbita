@@ -71,6 +71,20 @@ enum MealType {
   OTHER
 }
 
+/// Origem de uma importação confirmada pelo usuário.
+enum ImportKind {
+  WORKOUTS
+  MEALS
+  MEASUREMENTS
+}
+
+/// Plano de acesso. A cobrança futura troca este campo após a confirmação do
+/// pagamento; o servidor usa o plano para aplicar as cotas de recursos.
+enum SubscriptionPlan {
+  FREE
+  PRO
+}
+
 /// Perfil do usuário. O `id` é igual ao id do usuário no Supabase Auth
 /// (auth.users.id). Cada conta tem no máximo um perfil.
 model Profile {
@@ -86,6 +100,7 @@ model Profile {
   targetProteinG Int?           @map("target_protein_g")
   targetCarbsG   Int?           @map("target_carbs_g")
   targetFatG     Int?           @map("target_fat_g")
+  subscriptionPlan SubscriptionPlan @default(FREE) @map("subscription_plan")
   onboardedAt    DateTime?      @map("onboarded_at") @db.Timestamptz(6)
   createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt      DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -97,6 +112,8 @@ model Profile {
   goals              Goal[]
   documents          FileDocument[]
   chatMessages       ChatMessage[]
+  aiUsageWindows     AiUsageWindow[]
+  importOperations   ImportOperation[]
 
   @@map("profiles")
 }
@@ -296,4 +313,38 @@ model ChatMessage {
 
   @@index([profileId, createdAt])
   @@map("chat_messages")
+}
+
+/// Contador de uso do assistente numa janela fixa. A chave composta permite
+/// atualizar o limite de forma atômica, sem depender de memória do servidor.
+model AiUsageWindow {
+  profileId          String   @map("profile_id") @db.Uuid
+  windowStartedAt    DateTime @map("window_started_at") @db.Timestamptz(6)
+  textRequests       Int      @default(0) @map("text_requests")
+  attachmentRequests Int      @default(0) @map("attachment_requests")
+  pdfExports         Int      @default(0) @map("pdf_exports")
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@id([profileId, windowStartedAt])
+  @@map("ai_usage_windows")
+}
+
+/// Registro da confirmação de uma importação. A combinação de perfil,
+/// tipo e identificador do navegador impede que uma nova tentativa grave o
+/// mesmo lote duas vezes.
+model ImportOperation {
+  id            BigInt     @id @default(autoincrement())
+  profileId     String     @map("profile_id") @db.Uuid
+  kind          ImportKind
+  requestId     String     @map("request_id") @db.Uuid
+  payloadHash   String     @map("payload_hash") @db.Char(64)
+  resultMessage String     @map("result_message")
+  createdAt     DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@unique([profileId, kind, requestId])
+  @@map("import_operations")
 }

@@ -9,6 +9,7 @@ import {
   SparklesIcon,
 } from "lucide-react";
 
+import { useOpenFromParam } from "@/lib/use-open-from-param";
 import { Button } from "@/components/ui/button";
 import { WeightDialog } from "./weight-dialog";
 import { MeasurementDialog } from "./measurement-dialog";
@@ -16,7 +17,7 @@ import { ImportMeasurementsDialog } from "./import-dialog";
 import { BodyPhotoDialog } from "./photo-dialog";
 
 export function MetricsActions({ aiEnabled }: { aiEnabled: boolean }) {
-  const [weightOpen, setWeightOpen] = useState(false);
+  const [weightOpen, setWeightOpen] = useState(useOpenFromParam("novo", "peso"));
   const [measurementOpen, setMeasurementOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [photoOpen, setPhotoOpen] = useState(false);

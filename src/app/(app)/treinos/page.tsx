@@ -1,7 +1,7 @@
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { isAiConfigured } from "@/lib/ai/client";
-import { formatDateBR, formatDateShort, toISODate } from "@/lib/date";
+import { formatDateBR, formatDateShort, toISODate, parseISODate, todayISO } from "@/lib/date";
 import { formatNumber } from "@/lib/metrics";
 import { totalVolume } from "@/lib/workouts";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -14,8 +14,6 @@ import { WorkoutsPanel, type WorkoutCardData } from "./workouts-panel";
 
 export const metadata = { title: "Treinos" };
 
-const KEY_SEP = "|@|";
-
 export default async function TreinosPage() {
   const user = await requireUser();
 
@@ -25,12 +23,14 @@ export default async function TreinosPage() {
     include: { exercises: true },
   });
 
-  const now = new Date();
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-  const fourWeeksAgo = new Date();
-  fourWeeksAgo.setDate(fourWeeksAgo.getDate() - 28);
+  const today = parseISODate(todayISO())!;
+  const monthStart = new Date(today);
+  monthStart.setUTCDate(1);
+  const fourWeeksAgo = new Date(today);
+  // 28 dias civis incluindo hoje.
+  fourWeeksAgo.setUTCDate(today.getUTCDate() - 27);
 
-  const completed = workouts.filter((w) => w.status === "COMPLETED");
+  const completed = workouts.filter((w) => w.status === "COMPLETED" && w.date <= today);
   const completedThisMonth = completed.filter((w) => w.date >= monthStart);
   const completedLast4Weeks = completed.filter((w) => w.date >= fourWeeksAgo);
 
@@ -51,39 +51,33 @@ export default async function TreinosPage() {
   });
 
   // Evolução por exercício: carga máxima por dia, por nome de exercício.
-  const exerciseRows = await prisma.exercise.findMany({
-    where: {
-      workout: { profileId: user.id, status: "COMPLETED" },
-      weightKg: { not: null },
-    },
-    select: {
-      name: true,
-      weightKg: true,
-      workout: { select: { date: true } },
-    },
-    orderBy: { workout: { date: "asc" } },
-  });
-
-  const maxByNameDate = new Map<string, number>();
-  for (const row of exerciseRows) {
-    const key = `${row.name}${KEY_SEP}${toISODate(row.workout.date)}`;
-    maxByNameDate.set(
-      key,
-      Math.max(maxByNameDate.get(key) ?? 0, row.weightKg ?? 0),
-    );
+  const maxByDateName = new Map<string, Map<string, number>>();
+  for (const workout of completed) {
+    const iso = toISODate(workout.date);
+    for (const exercise of workout.exercises) {
+      if (exercise.weightKg == null) continue;
+      let byName = maxByDateName.get(iso);
+      if (!byName) {
+        byName = new Map<string, number>();
+        maxByDateName.set(iso, byName);
+      }
+      byName.set(
+        exercise.name,
+        Math.max(byName.get(exercise.name) ?? 0, exercise.weightKg),
+      );
+    }
   }
 
-  const progressionPoints: ProgressionPoint[] = [...maxByNameDate].map(
-    ([key, weightKg]) => {
-      const [name, iso] = key.split(KEY_SEP);
-      return {
+  const progressionPoints: ProgressionPoint[] = [...maxByDateName]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .flatMap(([date, byName]) =>
+      [...byName].map(([name, weightKg]) => ({
         name,
-        date: iso,
-        label: formatDateShort(new Date(`${iso}T00:00:00.000Z`)),
+        date,
+        label: formatDateShort(new Date(`${date}T00:00:00.000Z`)),
         weightKg,
-      };
-    },
-  );
+      })),
+    );
 
   const exerciseNames = [
     ...new Set(progressionPoints.map((point) => point.name)),
@@ -100,7 +94,8 @@ export default async function TreinosPage() {
         <StatCard
           label="Treinos no mês"
           value={completedThisMonth.length}
-          hint={now.toLocaleDateString("pt-BR", {
+          hint={today.toLocaleDateString("pt-BR", {
+            timeZone: "UTC",
             month: "long",
             year: "numeric",
           })}

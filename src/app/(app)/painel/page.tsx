@@ -33,13 +33,12 @@ export default async function PainelPage() {
   const profile = await getProfile();
   if (!profile) redirect("/onboarding");
 
-  const now = new Date();
-  const weekStart = new Date(now);
-  weekStart.setDate(now.getDate() - ((now.getDay() + 6) % 7));
-  weekStart.setHours(0, 0, 0, 0);
-  const ninetyAgo = new Date(now);
-  ninetyAgo.setDate(now.getDate() - 90);
-  const today = parseISODate(todayISO()) as Date;
+  const today = parseISODate(todayISO())!;
+  const weekStart = new Date(today);
+  weekStart.setUTCDate(today.getUTCDate() - ((today.getUTCDay() + 6) % 7));
+  const ninetyAgo = new Date(today);
+  // 90 dias civis incluindo hoje.
+  ninetyAgo.setUTCDate(today.getUTCDate() - 89);
 
   const [
     weights90,
@@ -54,18 +53,18 @@ export default async function PainelPage() {
     resolver,
   ] = await Promise.all([
     prisma.weightEntry.findMany({
-      where: { profileId: user.id, date: { gte: ninetyAgo } },
+      where: { profileId: user.id, date: { gte: ninetyAgo, lte: today } },
       orderBy: { date: "asc" },
     }),
     prisma.weightEntry.findFirst({
-      where: { profileId: user.id },
+      where: { profileId: user.id, date: { lte: today } },
       orderBy: { date: "desc" },
     }),
     prisma.workout.count({
       where: {
         profileId: user.id,
         status: "COMPLETED",
-        date: { gte: weekStart },
+        date: { gte: weekStart, lte: today },
       },
     }),
     prisma.workout.findMany({
@@ -74,7 +73,7 @@ export default async function PainelPage() {
       take: 3,
     }),
     prisma.workout.findMany({
-      where: { profileId: user.id, status: "COMPLETED" },
+      where: { profileId: user.id, status: "COMPLETED", date: { lte: today } },
       orderBy: { date: "desc" },
       take: 3,
     }),
@@ -87,12 +86,12 @@ export default async function PainelPage() {
       orderBy: { createdAt: "desc" },
     }),
     prisma.weightEntry.findMany({
-      where: { profileId: user.id },
+      where: { profileId: user.id, date: { lte: today } },
       orderBy: { date: "desc" },
       take: 3,
     }),
     prisma.measurementEntry.findMany({
-      where: { profileId: user.id },
+      where: { profileId: user.id, date: { lte: today } },
       orderBy: { date: "desc" },
       take: 2,
     }),
@@ -305,8 +304,10 @@ export default async function PainelPage() {
                       href={`/treinos/${workout.id}`}
                       className="flex items-center gap-2 rounded-lg border p-2.5 text-sm hover:bg-accent"
                     >
-                      <CalendarIcon className="size-4 text-muted-foreground" />
-                      <span className="flex-1 truncate">{workout.name}</span>
+                      <CalendarIcon className="size-4 shrink-0 text-muted-foreground" />
+                      <span className="line-clamp-2 flex-1 break-words">
+                        {workout.name}
+                      </span>
                       <span className="shrink-0 text-xs text-muted-foreground">
                         {formatDateBR(workout.date)}
                       </span>
@@ -339,7 +340,9 @@ export default async function PainelPage() {
                     <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted">
                       <item.icon className="size-4 text-muted-foreground" />
                     </span>
-                    <span className="flex-1 truncate">{item.text}</span>
+                    <span className="line-clamp-2 flex-1 break-words">
+                      {item.text}
+                    </span>
                     <span className="shrink-0 text-xs text-muted-foreground">
                       {formatDateBR(item.date)}
                     </span>
@@ -353,28 +356,28 @@ export default async function PainelPage() {
 
       <div className="flex flex-wrap gap-2">
         <Link
-          href="/medidas"
+          href="/medidas?novo=peso"
           className={buttonVariants({ variant: "outline", size: "sm" })}
         >
           <ScaleIcon />
           Registrar peso
         </Link>
         <Link
-          href="/treinos"
+          href="/treinos?novo=1"
           className={buttonVariants({ variant: "outline", size: "sm" })}
         >
           <DumbbellIcon />
           Novo treino
         </Link>
         <Link
-          href="/alimentacao"
+          href="/alimentacao?novo=refeicao"
           className={buttonVariants({ variant: "outline", size: "sm" })}
         >
           <UtensilsIcon />
           Registrar refeição
         </Link>
         <Link
-          href="/metas"
+          href="/metas?novo=1"
           className={buttonVariants({ variant: "outline", size: "sm" })}
         >
           <TargetIcon />

@@ -3,7 +3,6 @@ import { redirect } from "next/navigation";
 
 import { getProfile, requireUser } from "@/lib/auth";
 import { BrandMark } from "@/components/brand-mark";
-import { ThemeToggle } from "@/components/theme-toggle";
 
 export default async function OnboardingLayout({
   children,
@@ -19,14 +18,13 @@ export default async function OnboardingLayout({
 
   return (
     <div className="flex min-h-full flex-col">
-      <header className="flex h-14 items-center justify-between px-4">
+      <header className="flex h-14 items-center px-4">
         <span className="flex items-center gap-2">
           <BrandMark />
           <span className="font-heading text-sm font-semibold">
             Auxiliar de Treino
           </span>
         </span>
-        <ThemeToggle />
       </header>
       <main className="flex flex-1 items-start justify-center p-4 md:items-center">
         <div className="w-full max-w-lg py-6">{children}</div>

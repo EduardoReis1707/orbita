@@ -29,6 +29,8 @@ export function ExportWorkoutsButton({
 }) {
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [error, setError] = useState<string | null>(null);
+  const [downloading, setDownloading] = useState(false);
 
   const allSelected = selected.size === workouts.length && workouts.length > 0;
 
@@ -40,6 +42,7 @@ export function ExportWorkoutsButton({
 
   function openDialog() {
     setSelected(new Set(workouts.map((w) => w.id)));
+    setError(null);
     setOpen(true);
   }
 
@@ -52,11 +55,17 @@ export function ExportWorkoutsButton({
     });
   }
 
-  function download(format: "pdf" | "csv" | "json") {
+  async function download(format: "pdf" | "csv" | "json") {
     const ids = [...selected].join(",");
-    triggerDownload(
+    setDownloading(true);
+    const result = await triggerDownload(
       `/api/exportar/treinos?formato=${format}${ids ? `&ids=${ids}` : ""}`,
     );
+    setDownloading(false);
+    if (!result.ok) {
+      setError(result.error);
+      return;
+    }
     setOpen(false);
   }
 
@@ -115,12 +124,14 @@ export function ExportWorkoutsButton({
             ))}
           </ul>
 
+          {error ? <p className="text-sm text-destructive">{error}</p> : null}
+
           <DialogFooter className="flex-row flex-wrap justify-end gap-2">
             <Button
               variant="outline"
               size="sm"
-              disabled={selected.size === 0}
-              onClick={() => download("pdf")}
+              disabled={selected.size === 0 || downloading}
+              onClick={() => void download("pdf")}
             >
               <FileTextIcon />
               PDF
@@ -128,8 +139,8 @@ export function ExportWorkoutsButton({
             <Button
               variant="outline"
               size="sm"
-              disabled={selected.size === 0}
-              onClick={() => download("csv")}
+              disabled={selected.size === 0 || downloading}
+              onClick={() => void download("csv")}
             >
               <FileSpreadsheetIcon />
               CSV
@@ -137,8 +148,8 @@ export function ExportWorkoutsButton({
             <Button
               variant="outline"
               size="sm"
-              disabled={selected.size === 0}
-              onClick={() => download("json")}
+              disabled={selected.size === 0 || downloading}
+              onClick={() => void download("json")}
             >
               <FileJsonIcon />
               JSON

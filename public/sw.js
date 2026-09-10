@@ -2,7 +2,9 @@
 // Estratégia: network-first para navegação (com fallback offline),
 // cache-first para os estáticos do Next.
 
-const CACHE = "auxiliar-treino-v1";
+// Troque a versão quando um deploy alterar os arquivos do app. Na ativação,
+// o cache anterior é removido e o navegador busca os novos bundles do Next.
+const CACHE = "auxiliar-treino-v2";
 const OFFLINE_URL = "/offline";
 
 self.addEventListener("install", (event) => {

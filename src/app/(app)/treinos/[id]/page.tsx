@@ -11,9 +11,12 @@ export async function generateMetadata({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const user = await requireUser();
   const { id } = await params;
-  const workout = await prisma.workout.findUnique({
-    where: { id: Number(id) },
+  const workoutId = Number(id);
+  if (!/^\d+$/.test(id) || !Number.isSafeInteger(workoutId) || workoutId < 1 || workoutId > 2147483647) notFound();
+  const workout = await prisma.workout.findFirst({
+    where: { id: workoutId, profileId: user.id },
     select: { name: true },
   });
   return { title: workout?.name ?? "Treino" };
@@ -27,7 +30,7 @@ export default async function WorkoutPage({
   const user = await requireUser();
   const { id } = await params;
   const workoutId = Number(id);
-  if (!Number.isInteger(workoutId)) notFound();
+  if (!/^\d+$/.test(id) || !Number.isSafeInteger(workoutId) || workoutId < 1 || workoutId > 2147483647) notFound();
 
   const workout = await prisma.workout.findFirst({
     where: { id: workoutId, profileId: user.id },

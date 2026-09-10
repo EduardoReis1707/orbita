@@ -6,6 +6,7 @@ import type { ActivityLevel, GoalType, Sex } from "@prisma/client";
 import { requireUser } from "@/lib/auth";
 import type { FormState } from "@/lib/forms";
 import { prisma } from "@/lib/prisma";
+import { parseNutritionTarget } from "@/lib/nutrition-targets";
 import {
   ACTIVITY_LEVEL_VALUES,
   GOAL_TYPE_VALUES,
@@ -86,10 +87,10 @@ export async function updateProfileAction(
     fieldErrors.targetWeightKg = ["Entre 20 e 400 kg."];
   }
 
-  const targetCalories = optInt(str(formData, "targetCalories"), 0, 20000);
-  const targetProteinG = optInt(str(formData, "targetProteinG"), 0, 2000);
-  const targetCarbsG = optInt(str(formData, "targetCarbsG"), 0, 2000);
-  const targetFatG = optInt(str(formData, "targetFatG"), 0, 2000);
+  const targetCalories = parseNutritionTarget(str(formData, "targetCalories"), "calories");
+  const targetProteinG = parseNutritionTarget(str(formData, "targetProteinG"), "protein");
+  const targetCarbsG = parseNutritionTarget(str(formData, "targetCarbsG"), "carbs");
+  const targetFatG = parseNutritionTarget(str(formData, "targetFatG"), "fat");
   for (const [key, value] of [
     ["targetCalories", targetCalories],
     ["targetProteinG", targetProteinG],

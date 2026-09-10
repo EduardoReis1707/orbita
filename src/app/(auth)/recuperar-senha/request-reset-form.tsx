@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 
 import { initialFormState } from "@/lib/forms";
 import {
@@ -22,6 +22,7 @@ export function RequestResetForm() {
     requestPasswordResetAction,
     initialFormState,
   );
+  const [email, setEmail] = useState("");
 
   return (
     <Card>
@@ -32,7 +33,7 @@ export function RequestResetForm() {
         </CardDescription>
       </CardHeader>
       <form action={action}>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-4 pb-6">
           <FormAlert state={state} />
           <div className="space-y-1.5">
             <Label htmlFor="email">E-mail</Label>
@@ -41,6 +42,8 @@ export function RequestResetForm() {
               name="email"
               type="email"
               autoComplete="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               required
             />
             <FieldError errors={state.fieldErrors?.email} />

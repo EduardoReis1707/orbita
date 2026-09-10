@@ -1,8 +1,12 @@
 /** Escapa um valor para uma célula CSV (RFC 4180). */
 function csvCell(value: unknown): string {
   if (value == null) return "";
-  const text = String(value);
-  if (/[",\n;]/.test(text)) {
+  const raw = String(value);
+  // Valores numéricos mantêm o tipo; texto não pode iniciar fórmulas.
+  const text = typeof value === "string" && /^[\s\u0000-\u001f]*[=+@-]|^[\t\r\n]/.test(raw)
+    ? "'" + raw
+    : raw;
+  if (/[",\r\n;]/.test(text)) {
     return `"${text.replace(/"/g, '""')}"`;
   }
   return text;

@@ -21,7 +21,15 @@ export async function GET(request: NextRequest) {
     });
 
     if (!error) {
-      return NextResponse.redirect(new URL(next, request.url));
+      const fallback = new URL("/painel", request.url);
+      let destination = fallback;
+      try {
+        const candidate = new URL(next, request.url);
+        if (candidate.origin === fallback.origin) destination = candidate;
+      } catch {
+        // Destinos malformados usam o painel.
+      }
+      return NextResponse.redirect(destination);
     }
   }
 

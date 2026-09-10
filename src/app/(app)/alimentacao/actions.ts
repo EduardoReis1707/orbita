@@ -8,6 +8,7 @@ import { parseISODate } from "@/lib/date";
 import type { FormState } from "@/lib/forms";
 import { prisma } from "@/lib/prisma";
 import { MEAL_TYPE_ORDER } from "@/lib/nutrition";
+import { parseNutritionTarget } from "@/lib/nutrition-targets";
 
 function str(formData: FormData, key: string): string {
   const value = formData.get(key);
@@ -18,12 +19,6 @@ function optNum(raw: string): number | undefined | null {
   if (raw === "") return undefined;
   const value = Number(raw.replace(",", "."));
   return Number.isFinite(value) ? value : null;
-}
-
-function optInt(raw: string): number | undefined | null {
-  if (raw === "") return undefined;
-  const value = Number(raw);
-  return Number.isInteger(value) ? value : null;
 }
 
 function revalidateNutrition() {
@@ -44,8 +39,8 @@ export async function saveNutritionTargetsAction(
   const fields = ["calories", "protein", "carbs", "fat"] as const;
   const parsed: Record<string, number | null> = {};
   for (const field of fields) {
-    const value = optInt(str(formData, field));
-    if (value === null || (value !== undefined && value < 0)) {
+    const value = parseNutritionTarget(str(formData, field), field);
+    if (value === null) {
       fieldErrors[field] = ["Valor inválido."];
     } else {
       parsed[field] = value ?? null;

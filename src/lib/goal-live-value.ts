@@ -1,5 +1,7 @@
 import type { GoalMetric } from "@prisma/client";
 
+import { parseISODate, todayISO } from "@/lib/date";
+
 import { prisma } from "@/lib/prisma";
 import { MEASUREMENT_KEYS, type MeasurementKey } from "@/lib/measurements";
 
@@ -8,23 +10,25 @@ import { MEASUREMENT_KEYS, type MeasurementKey } from "@/lib/measurements";
  * atual de uma meta automática a partir dos registros do perfil.
  */
 export async function buildGoalLiveValueResolver(profileId: string) {
-  const fourWeeksAgo = new Date();
-  fourWeeksAgo.setDate(fourWeeksAgo.getDate() - 28);
+  const today = parseISODate(todayISO())!;
+  // 28 dias civis incluindo hoje; nao inclui o 29o dia.
+  const fourWeeksAgo = new Date(today);
+  fourWeeksAgo.setUTCDate(today.getUTCDate() - 27);
 
   const [latestWeight, measurements, exerciseMax, completedCount] =
     await Promise.all([
       prisma.weightEntry.findFirst({
-        where: { profileId },
+        where: { profileId, date: { lte: today } },
         orderBy: { date: "desc" },
       }),
       prisma.measurementEntry.findMany({
-        where: { profileId },
+        where: { profileId, date: { lte: today } },
         orderBy: { date: "desc" },
       }),
       prisma.exercise.groupBy({
         by: ["name"],
         where: {
-          workout: { profileId, status: "COMPLETED" },
+          workout: { profileId, status: "COMPLETED", date: { lte: today } },
           weightKg: { not: null },
         },
         _max: { weightKg: true },
@@ -33,7 +37,7 @@ export async function buildGoalLiveValueResolver(profileId: string) {
         where: {
           profileId,
           status: "COMPLETED",
-          date: { gte: fourWeeksAgo },
+          date: { gte: fourWeeksAgo, lte: today },
         },
       }),
     ]);

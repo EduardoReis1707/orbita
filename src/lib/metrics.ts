@@ -1,5 +1,7 @@
 import type { ActivityLevel, Sex } from "@prisma/client";
 
+import { parseISODate, todayISO } from "@/lib/date";
+
 import { ACTIVITY_LEVEL_FACTOR } from "@/lib/profile";
 
 /**
@@ -31,9 +33,10 @@ export function bmiBand(value: number): BmiBand {
 
 /** Idade em anos completos a partir da data de nascimento. */
 export function ageInYears(birthDate: Date, on: Date = new Date()): number {
-  let age = on.getFullYear() - birthDate.getFullYear();
-  const monthDiff = on.getMonth() - birthDate.getMonth();
-  if (monthDiff < 0 || (monthDiff === 0 && on.getDate() < birthDate.getDate())) {
+  const civilOn = parseISODate(todayISO(on))!;
+  let age = civilOn.getUTCFullYear() - birthDate.getUTCFullYear();
+  const monthDiff = civilOn.getUTCMonth() - birthDate.getUTCMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && civilOn.getUTCDate() < birthDate.getUTCDate())) {
     age -= 1;
   }
   return age;
@@ -88,7 +91,10 @@ export function weightGoalProgress(
 ): WeightGoalProgress {
   const totalDelta = targetKg - startKg;
   const doneDelta = currentKg - startKg;
-  const remainingKg = Math.round((currentKg - targetKg) * 10) / 10;
+  const remainingDelta = totalDelta > 0.05
+    ? targetKg - currentKg
+    : currentKg - targetKg;
+  const remainingKg = Math.round(remainingDelta * 10) / 10;
 
   const direction =
     totalDelta < -0.05 ? "lose" : totalDelta > 0.05 ? "gain" : "maintain";

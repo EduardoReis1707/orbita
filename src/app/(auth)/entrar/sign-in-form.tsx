@@ -15,6 +15,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { FieldError, FormAlert, SubmitButton } from "@/components/form-feedback";
+import { GoogleSignInButton } from "@/components/google-sign-in-button";
 import { signInAction } from "../actions";
 
 export function SignInForm({ next }: { next: string | null }) {
@@ -75,6 +76,12 @@ export function SignInForm({ next }: { next: string | null }) {
         </CardContent>
         <CardFooter className="flex-col gap-3">
           <SubmitButton>Entrar</SubmitButton>
+          <div className="flex w-full items-center gap-3 text-xs text-muted-foreground">
+            <span className="h-px flex-1 bg-border" />
+            ou
+            <span className="h-px flex-1 bg-border" />
+          </div>
+          <GoogleSignInButton next={next ?? "/painel"} />
           <p className="text-sm text-muted-foreground">
             Não tem conta?{" "}
             <Link

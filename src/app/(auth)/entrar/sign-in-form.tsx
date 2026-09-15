@@ -28,7 +28,7 @@ export function SignInForm({ next }: { next: string | null }) {
       <CardHeader>
         <CardTitle>Entrar</CardTitle>
         <CardDescription>
-          Acesse a sua conta do Auxiliar de Treino.
+          Acesse a sua conta da Órbita.
         </CardDescription>
       </CardHeader>
       <form action={action}>

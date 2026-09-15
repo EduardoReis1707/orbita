@@ -32,7 +32,7 @@ export function AppSidebar() {
         >
           <BrandMark className="transition-transform duration-300 hover:rotate-[-8deg] hover:scale-105" />
           <span className="font-heading text-sm font-semibold group-data-[collapsible=icon]:hidden">
-            Auxiliar de Treino
+            Órbita
           </span>
         </Link>
       </SidebarHeader>

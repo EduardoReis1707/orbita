@@ -38,7 +38,7 @@ function WorkoutsDocument({
   meta: PdfMeta;
 }) {
   return (
-    <Document title="Treinos — Auxiliar de Treino" author="Auxiliar de Treino">
+    <Document title="Treinos — Órbita" author="Órbita">
       <Page size="A4" style={styles.page}>
         <PageChrome title="Treinos" meta={meta} />
 

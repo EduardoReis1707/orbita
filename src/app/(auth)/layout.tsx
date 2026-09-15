@@ -10,7 +10,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
         <Link href="/" className="flex items-center gap-2">
           <BrandMark />
           <span className="font-heading text-sm font-semibold">
-            Auxiliar de Treino
+            Órbita
           </span>
         </Link>
       </header>

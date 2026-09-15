@@ -45,7 +45,7 @@ export async function POST() {
   if (!customerId) {
     const customer = await stripe.customers.create({
       email: user.email,
-      metadata: { profileId: user.id, app: "auxiliar-de-treino" },
+      metadata: { profileId: user.id, app: "orbita" },
     });
     customerId = customer.id;
     await prisma.profile.update({

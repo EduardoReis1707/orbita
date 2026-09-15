@@ -224,7 +224,7 @@ export function Hero() {
       data-lp-surface="dark"
       className="lp-section lp-dark lp-track"
       style={{ height: reduced ? "100svh" : "320vh" }}
-      aria-label="Auxiliar de Treino — visão geral"
+      aria-label="Órbita — visão geral"
     >
       <div className="lp-stage-wrap">
         <div className="lp-hero-glow" aria-hidden />

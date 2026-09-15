@@ -1,4 +1,4 @@
-// Schema do banco — Auxiliar de Treino
+// Schema do banco — Órbita
 // Docs: https://pris.ly/d/prisma-schema
 
 generator client {

@@ -1,8 +1,18 @@
-import { ActivityIcon } from "lucide-react";
-
 import { cn } from "@/lib/utils";
 
-/** Marca do produto: quadrado com gradiente roxo e o ícone. */
+/** Ícone da marca: um planeta com uma lua orbitando. Mesmas coordenadas
+ * usadas em `src/app/icon.tsx` e `src/app/apple-icon.tsx` — qualquer ajuste
+ * de forma deve ser replicado nos três lugares. */
+function OrbitGlyph({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden>
+      <circle cx="10" cy="14" r="5.5" />
+      <circle cx="16.5" cy="7" r="2.6" />
+    </svg>
+  );
+}
+
+/** Marca do produto: quadrado com o gradiente azul-ciano da Órbita e o ícone. */
 export function BrandMark({ className }: { className?: string }) {
   return (
     <span
@@ -11,7 +21,7 @@ export function BrandMark({ className }: { className?: string }) {
         className,
       )}
     >
-      <ActivityIcon className="size-4" />
+      <OrbitGlyph className="size-4" />
     </span>
   );
 }

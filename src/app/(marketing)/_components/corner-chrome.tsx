@@ -10,6 +10,7 @@ const NAV = [
   { id: "recursos", label: "Recursos" },
   { id: "como-funciona", label: "Como funciona" },
   { id: "evolucao", label: "Evolução" },
+  { id: "planos", label: "Planos" },
 ];
 
 export function CornerChrome() {

@@ -4,6 +4,7 @@ const LINKS = [
   { href: "#recursos", label: "Recursos" },
   { href: "#como-funciona", label: "Como funciona" },
   { href: "#evolucao", label: "Evolução" },
+  { href: "#planos", label: "Planos" },
   { href: "/entrar", label: "Entrar" },
   { href: "/cadastrar", label: "Criar conta" },
 ];

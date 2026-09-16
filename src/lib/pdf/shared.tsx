@@ -20,7 +20,7 @@ export function PageChrome({
       <View style={styles.headerAccent} fixed />
       <View style={styles.headerContent} fixed>
         <View>
-          <Text style={styles.brand}>Auxiliar de Treino</Text>
+          <Text style={styles.brand}>Órbita</Text>
           <Text style={styles.docTitle}>{title}</Text>
         </View>
         <View>
@@ -32,7 +32,7 @@ export function PageChrome({
       </View>
 
       <View style={styles.footer} fixed>
-        <Text>{footerNote ?? "Gerado pelo Auxiliar de Treino"}</Text>
+        <Text>{footerNote ?? "Gerado pela Órbita"}</Text>
         <Text
           render={({ pageNumber, totalPages }) =>
             `${pageNumber} / ${totalPages}`

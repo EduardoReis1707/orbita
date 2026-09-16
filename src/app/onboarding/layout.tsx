@@ -22,7 +22,7 @@ export default async function OnboardingLayout({
         <span className="flex items-center gap-2">
           <BrandMark />
           <span className="font-heading text-sm font-semibold">
-            Auxiliar de Treino
+            Órbita
           </span>
         </span>
       </header>

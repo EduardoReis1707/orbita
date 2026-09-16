@@ -49,8 +49,8 @@ function NutritionDocument({
 
   return (
     <Document
-      title="Alimentação — Auxiliar de Treino"
-      author="Auxiliar de Treino"
+      title="Alimentação — Órbita"
+      author="Órbita"
     >
       <Page size="A4" style={styles.page}>
         <PageChrome

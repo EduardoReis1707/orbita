@@ -10,6 +10,7 @@ const NAV = [
   { id: "recursos", label: "Recursos" },
   { id: "como-funciona", label: "Como funciona" },
   { id: "evolucao", label: "Evolução" },
+  { id: "planos", label: "Planos" },
 ];
 
 export function CornerChrome() {
@@ -60,7 +61,7 @@ export function CornerChrome() {
       <div className="flex items-center gap-2.5">
         <BrandMark className="rounded-[4px]" />
         <span className="font-sans text-[0.82rem] font-semibold tracking-tight">
-          Auxiliar de Treino
+          Órbita
         </span>
       </div>
 

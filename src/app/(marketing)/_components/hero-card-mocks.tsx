@@ -11,7 +11,7 @@ function Frame({ label, children }: { label: string; children: ReactNode }) {
       viewBox="0 0 240 160"
       fill="none"
       className="h-full w-full"
-      preserveAspectRatio="xMidYMid slice"
+      preserveAspectRatio="xMidYMid meet"
       aria-hidden
     >
       <text

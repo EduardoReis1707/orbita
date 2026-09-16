@@ -24,7 +24,7 @@ export function AppHeader({ name, email }: { name: string; email: string }) {
     Object.entries(EXTRA_TITLES).find(
       ([href]) => pathname === href || pathname.startsWith(`${href}/`),
     )?.[1] ??
-    "Auxiliar de Treino";
+    "Órbita";
 
   return (
     <header className="sticky top-0 z-10 flex h-14 items-center gap-2 border-b bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">

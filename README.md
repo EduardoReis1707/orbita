@@ -1,4 +1,4 @@
-# Auxiliar de Treino
+# Órbita
 
 Plataforma web responsiva para acompanhamento pessoal de treino, alimentação,
 metas e evolução física. Centraliza dados que normalmente ficam espalhados em

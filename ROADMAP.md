@@ -1,4 +1,4 @@
-# Roadmap — Auxiliar de Treino
+# Roadmap — Órbita
 
 Plataforma web responsiva para acompanhamento pessoal de treino, alimentação,
 metas e evolução física. Este documento acompanha o escopo do MVP e o andamento

@@ -10,7 +10,7 @@ export default function OfflinePage() {
       </span>
       <h1 className="font-heading text-lg font-semibold">Você está offline</h1>
       <p className="max-w-xs text-sm text-muted-foreground">
-        Reconecte à internet para continuar usando o Auxiliar de Treino.
+        Reconecte à internet para continuar usando a Órbita.
       </p>
     </div>
   );

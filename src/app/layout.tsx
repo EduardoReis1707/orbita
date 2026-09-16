@@ -17,12 +17,12 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "Auxiliar de Treino",
-    template: "%s · Auxiliar de Treino",
+    default: "Órbita",
+    template: "%s · Órbita",
   },
   description:
     "Plataforma para acompanhar treino, alimentação, metas e evolução física em um só lugar.",
-  applicationName: "Auxiliar de Treino",
+  applicationName: "Órbita",
 };
 
 export const viewport: Viewport = {

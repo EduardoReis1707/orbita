@@ -4,6 +4,7 @@ import { Hero } from "./_components/hero";
 import { FeatureGrid } from "./_components/feature-grid";
 import { HowItWorks } from "./_components/how-it-works";
 import { Showcase } from "./_components/showcase";
+import { Pricing } from "./_components/pricing";
 import { Cta } from "./_components/cta";
 
 export const metadata: Metadata = {
@@ -18,6 +19,7 @@ export default function LandingPage() {
       <FeatureGrid />
       <HowItWorks />
       <Showcase />
+      <Pricing />
       <Cta />
     </>
   );

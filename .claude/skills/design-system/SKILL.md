@@ -1,9 +1,9 @@
 ---
 name: design-system
-description: Convenções de UI, design e front-end do Auxiliar de Treino (Next.js 16 + Tailwind v4 + shadcn/ui estilo base-nova). Consulte antes de criar ou alterar qualquer tela, componente, estilo ou texto de interface.
+description: Convenções de UI, design e front-end da Órbita (Next.js 16 + Tailwind v4 + shadcn/ui estilo base-nova). Consulte antes de criar ou alterar qualquer tela, componente, estilo ou texto de interface.
 ---
 
-# Design System — Auxiliar de Treino
+# Design System — Órbita
 
 Plataforma web responsiva de acompanhamento de treino, alimentação, metas e
 evolução física. Interface em **português do Brasil**, **mobile-first**, com

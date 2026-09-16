@@ -2,8 +2,8 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Auxiliar de Treino",
-    short_name: "Treino",
+    name: "Órbita",
+    short_name: "Órbita",
     description:
       "Acompanhe treino, alimentação, metas e evolução física em um só lugar.",
     start_url: "/painel",
